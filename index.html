@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SportsStats.org — Attendance, Tickets, Teams & Players</title>
+<meta name="description" content="Attendance, average ticket prices, team stats, and player stats for the NBA, WNBA, men's college basketball, and NFL — sourced from official league data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F5F3ED;
+  --card:#FFFFFF;
+  --ink:#141A24;
+  --muted:#66707E;
+  --line:#DCD7CA;
+  --accent:#C8102E; /* set per league by JS */
+  --accent-ink:#FFFFFF;
+  --good:#0B6E4F;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:'Barlow',system-ui,sans-serif;
+  background:var(--paper);
+  color:var(--ink);
+  line-height:1.5;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+
+/* ---------- Header ---------- */
+header{border-bottom:3px solid var(--ink);background:var(--paper)}
+.masthead{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px;padding:18px 0 10px}
+.wordmark{font-family:'Barlow Condensed';font-weight:700;font-size:clamp(28px,5vw,40px);letter-spacing:.02em;text-transform:uppercase}
+.wordmark span{color:var(--accent);transition:color .25s}
+.tagline{font-size:13px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+
+/* League tabs — the "section sign" strip */
+.league-tabs{display:grid;grid-template-columns:repeat(4,1fr);border:2px solid var(--ink);border-bottom:none}
+.league-tab{
+  appearance:none;border:none;background:var(--card);cursor:pointer;
+  font-family:'Barlow Condensed';font-weight:700;text-transform:uppercase;
+  font-size:clamp(16px,3vw,22px);letter-spacing:.05em;
+  padding:12px 4px 10px;color:var(--ink);
+  border-right:2px solid var(--ink);
+  transition:background .15s,color .15s;
+}
+.league-tab:last-child{border-right:none}
+.league-tab small{display:block;font-family:'Barlow';font-weight:500;font-size:10px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.league-tab.active{background:var(--accent);color:var(--accent-ink)}
+.league-tab.active small{color:rgba(255,255,255,.75)}
+.league-tab:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}
+
+/* View tabs */
+.view-tabs{display:flex;gap:0;border:2px solid var(--ink);border-top:2px solid var(--ink);background:var(--card);overflow-x:auto}
+.view-tab{
+  appearance:none;border:none;background:transparent;cursor:pointer;
+  font-family:'Barlow';font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+  padding:10px 16px;color:var(--muted);white-space:nowrap;border-bottom:3px solid transparent;
+}
+.view-tab.active{color:var(--ink);border-bottom-color:var(--accent)}
+.view-tab:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+
+/* ---------- Content ---------- */
+main{padding:22px 0 48px}
+h2.section{
+  font-family:'Barlow Condensed';font-weight:700;text-transform:uppercase;
+  font-size:clamp(22px,4vw,30px);letter-spacing:.03em;margin-bottom:4px;
+}
+.section-sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+.rule{height:4px;background:var(--accent);width:64px;margin:6px 0 14px;transition:background .25s}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:var(--card);border:2px solid var(--ink);padding:14px 14px 12px}
+.stat-card .big{font-family:'Barlow Condensed';font-weight:700;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+.stat-card .lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.stat-card .note{font-size:12px;color:var(--muted);margin-top:6px}
+
+.table-scroll{overflow-x:auto;background:var(--card);border:2px solid var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+th{
+  font-family:'Barlow';font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  text-align:left;padding:10px 12px;border-bottom:2px solid var(--ink);background:var(--paper);
+  position:sticky;top:0;
+}
+td{padding:9px 12px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right}
+td.rank{color:var(--muted);width:36px}
+.teamcell{display:flex;align-items:center;gap:10px;font-weight:600}
+.teamcell img{width:24px;height:24px;object-fit:contain;flex:none}
+tbody tr:hover{background:#FBFAF6}
+
+.footnote{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.6}
+.footnote a{color:inherit}
+
+.pill{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  border:1px solid var(--ink);padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:middle}
+
+/* Scoreboard ticker */
+.ticker{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;margin-bottom:22px}
+.game{flex:none;background:var(--card);border:2px solid var(--ink);padding:10px 14px;min-width:170px}
+.game .status{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:6px}
+.game .row{display:flex;justify-content:space-between;gap:14px;font-weight:600;font-size:14px}
+.game .row img{width:18px;height:18px;vertical-align:-3px;margin-right:6px}
+.game .score{font-variant-numeric:tabular-nums}
+
+/* Teams grid */
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.controls input,.controls select{
+  font-family:'Barlow';font-size:14px;padding:8px 12px;border:2px solid var(--ink);background:var(--card);color:var(--ink);min-width:200px
+}
+.controls input:focus,.controls select:focus{outline:2px solid var(--accent)}
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.team-card{
+  display:flex;align-items:center;gap:10px;background:var(--card);border:2px solid var(--ink);
+  padding:10px 12px;cursor:pointer;text-align:left;font-family:'Barlow';font-weight:600;font-size:14px;color:var(--ink)
+}
+.team-card img{width:32px;height:32px;object-fit:contain;flex:none}
+.team-card:hover{background:var(--accent);color:var(--accent-ink)}
+.team-card:focus-visible{outline:3px solid var(--ink)}
+
+/* Roster panel */
+.overlay{position:fixed;inset:0;background:rgba(20,26,36,.55);display:flex;justify-content:center;align-items:flex-start;padding:5vh 16px;z-index:50}
+.panel{background:var(--paper);border:3px solid var(--ink);max-width:760px;width:100%;max-height:85vh;overflow:auto}
+.panel-head{display:flex;align-items:center;gap:14px;padding:16px;border-bottom:3px solid var(--ink);background:var(--card);position:sticky;top:0}
+.panel-head img{width:48px;height:48px;object-fit:contain}
+.panel-head h3{font-family:'Barlow Condensed';font-weight:700;font-size:26px;text-transform:uppercase;flex:1;line-height:1.1}
+.close-btn{appearance:none;border:2px solid var(--ink);background:var(--card);font-family:'Barlow';font-weight:700;font-size:14px;padding:6px 12px;cursor:pointer}
+.close-btn:hover{background:var(--ink);color:#fff}
+.panel .table-scroll{border:none;border-top:none}
+.panel table{min-width:480px}
+
+.loading,.error{padding:32px 16px;text-align:center;color:var(--muted);font-size:14px}
+.error{color:#A11}
+
+/* Live game card */
+.live-card{border:3px solid var(--accent);background:var(--card);padding:14px 16px;margin:14px 16px 0}
+.live-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#D6001C;margin-right:6px;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.live-tag{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#D6001C}
+.live-score{display:flex;justify-content:center;gap:22px;align-items:center;margin:10px 0 4px;font-family:'Barlow Condensed';font-weight:700}
+.live-score .side{text-align:center}
+.live-score .side img{width:40px;height:40px;object-fit:contain;display:block;margin:0 auto 2px}
+.live-score .side .abbr{font-size:14px;letter-spacing:.05em}
+.live-score .pts{font-size:44px;line-height:1;font-variant-numeric:tabular-nums}
+.live-score .mid{font-size:13px;font-family:'Barlow';font-weight:600;color:var(--muted);text-align:center;min-width:70px}
+.watch-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;justify-content:center}
+.watch-btn{display:inline-block;font-family:'Barlow';font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+  text-decoration:none;border:2px solid var(--ink);padding:7px 14px;color:var(--ink);background:var(--card)}
+.watch-btn:hover{background:var(--ink);color:#fff}
+.watch-btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.watch-btn.primary:hover{filter:brightness(.85)}
+.bcast{font-size:12px;color:var(--muted);text-align:center;margin-top:6px}
+.game a{color:inherit;text-decoration:none}
+
+footer{border-top:3px solid var(--ink);padding:20px 0 36px;font-size:12px;color:var(--muted);line-height:1.7}
+footer strong{color:var(--ink)}
+
+@media(max-width:600px){
+  .league-tab{font-size:15px;padding:10px 2px 8px}
+  .league-tab small{display:none}
+  th,td{padding:8px}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="masthead">
+      <div class="wordmark">Sports<span>Stats</span>.org</div>
+      <div class="tagline">Attendance &middot; Ticket Prices &middot; Teams &middot; Players</div>
+    </div>
+    <nav class="league-tabs" id="leagueTabs" aria-label="League"></nav>
+    <nav class="view-tabs" id="viewTabs" aria-label="Section"></nav>
+  </div>
+</header>
+
+<main class="wrap" id="main">
+  <div class="loading">Loading&hellip;</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <strong>About the data.</strong> Standings, scores, team records, rosters, and league leaders load live from ESPN&rsquo;s public data feed, which is compiled from official league stat sheets, and update automatically. Attendance figures come from official league / ESPN attendance reports for the season noted on each table. Ticket price figures are cited to their source (leagues do not publish official average ticket prices; the most-used industry sources are the Team Marketing Report Fan Cost Index and league gate reports). SportsStats.org is an independent reference site and is not affiliated with the NBA, WNBA, NCAA, or NFL.
+  </div>
+</footer>
+
+<script>
+/* ================= CONFIG ================= */
+const LEAGUES = {
+  nba:  { label:'NBA',  sub:'Pro Basketball',      sport:'basketball', slug:'nba',                     accent:'#C8102E' },
+  wnba: { label:'WNBA', sub:"Women's Pro Hoops",   sport:'basketball', slug:'wnba',                    accent:'#E56020' },
+  ncaam:{ label:'NCAA MBB', sub:"Men's College",   sport:'basketball', slug:'mens-college-basketball', accent:'#1D4F91' },
+  nfl:  { label:'NFL',  sub:'Pro Football',        sport:'football',   slug:'nfl',                     accent:'#013369' }
+};
+const VIEWS = [
+  { id:'attendance', label:'Attendance & Tickets' },
+  { id:'standings',  label:'Standings' },
+  { id:'leaders',    label:'Stat Leaders' },
+  { id:'teams',      label:'Teams & Rosters' },
+  { id:'scores',     label:'Scoreboard' }
+];
+const API = (lg) => `https://site.api.espn.com/apis/site/v2/sports/${LEAGUES[lg].sport}/${LEAGUES[lg].slug}`;
+const API_V2 = (lg) => `https://site.api.espn.com/apis/v2/sports/${LEAGUES[lg].sport}/${LEAGUES[lg].slug}`;
+const API_V3 = (lg) => `https://site.api.espn.com/apis/site/v3/sports/${LEAGUES[lg].sport}/${LEAGUES[lg].slug}`;
+
+/* ================= VERIFIED ATTENDANCE / TICKET DATA =================
+   EDIT HERE. Each league block holds hand-verified figures with sources.
+   rows: [team, avgHomeAttendance, totalHomeAttendance, homeGames, avgTicket or null]
+====================================================================== */
+const ATTENDANCE = {
+
+nfl: {
+  season: '2025 regular season',
+  source: 'Official league attendance via ESPN NFL attendance report (final, 17-game season).',
+  ticketNote: 'Avg. ticket column: 2024 gross general-admission ticket price from the NFL\u2019s internal Summary of Attendance Statistics (reported by CNBC), shown where verified. League-wide 2024 average non-premium ticket: $136.38 (Team Marketing Report Fan Cost Index). Average resale-market price in 2025 was roughly $312 (Statista).',
+  highlights: [
+    { big:'69,055', lbl:'League avg per game, 2025', note:'Down 0.8% \u2014 first dip since 2020 (SBJ)' },
+    { big:'97.6%',  lbl:'Avg. capacity filled, 2025', note:'12 of 32 teams sold 100%+ of posted capacity' },
+    { big:'92,992', lbl:'Top home average \u2014 Dallas', note:'Cowboys have led the NFL since AT&T Stadium opened' },
+    { big:'$136',   lbl:'Avg. non-premium ticket (2024)', note:'First time the 32-team average topped $100+ league-wide' }
+  ],
+  cols: ['Team','Avg Home','Total Home','Home Gms','Avg Ticket'],
+  rows: [
+    ['Dallas Cowboys',92992,743934,8,null],
+    ['New York Giants',79787,638295,8,null],
+    ['Green Bay Packers',77848,622788,8,null],
+    ['Denver Broncos',75256,677305,9,null],
+    ['Kansas City Chiefs',73461,661146,9,null],
+    ['New York Jets',73361,660246,9,123.31],
+    ['Los Angeles Rams',73235,585883,8,null],
+    ['Carolina Panthers',72418,579343,8,null],
+    ['Los Angeles Chargers',71559,572478,8,null],
+    ['San Francisco 49ers',71177,569416,8,190.78],
+    ['Buffalo Bills',70877,637896,9,null],
+    ['Houston Texans',70821,637391,9,null],
+    ['Atlanta Falcons',70599,564798,8,null],
+    ['Baltimore Ravens',70295,632654,9,null],
+    ['New Orleans Saints',70036,560290,8,null],
+    ['Philadelphia Eagles',69879,559032,8,184.27],
+    ['Seattle Seahawks',68741,549924,8,null],
+    ['Pittsburgh Steelers',67213,604923,9,null],
+    ['Miami Dolphins',67123,604106,9,null],
+    ['Minnesota Vikings',66842,534738,8,null],
+    ['Indianapolis Colts',66088,594794,9,null],
+    ['Cincinnati Bengals',64949,584543,9,null],
+    ['Cleveland Browns',64660,581941,9,null],
+    ['New England Patriots',64628,581652,9,null],
+    ['Detroit Lions',64590,516719,8,null],
+    ['Jacksonville Jaguars',64445,580013,9,null],
+    ['Washington Commanders',64295,514362,8,null],
+    ['Chicago Bears',58127,465014,8,null],
+    ['Tennessee Titans',58893,530037,9,null],
+    ['Tampa Bay Buccaneers',63640,509124,8,null],
+    ['Arizona Cardinals',63525,508197,8,null],
+    ['Las Vegas Raiders',62260,560341,9,165.58]
+  ]
+},
+
+wnba: {
+  season: '2025 regular season',
+  source: 'League totals per official 2025 WNBA season figures; team figures as announced by teams / league.',
+  ticketNote: 'The WNBA does not publish average ticket prices; a verified per-team ticket column will be added once we lock a source.',
+  highlights: [
+    { big:'3,142,082', lbl:'Total attendance, 2025', note:'All-time league record \u2014 first season past 3 million' },
+    { big:'10,986', lbl:'League avg per game, 2025', note:'Best in league history, topping the 1998 record' },
+    { big:'18,064', lbl:'Golden State Valkyries avg', note:'Sold out all 22 home games in their debut season \u2014 WNBA record' },
+    { big:'397,408', lbl:'Valkyries total home crowd', note:'Also a league record; Indiana and New York both topped 300,000' }
+  ],
+  cols: ['Team','Avg Home','Total Home','Home Gms','Avg Ticket'],
+  rows: [
+    ['Golden State Valkyries',18064,397408,22,null],
+    ['Indiana Fever',16000,349313,21,null],
+    ['New York Liberty',16000,341575,21,null],
+    ['Seattle Storm',11835,null,22,null]
+  ],
+  rowNote: 'Indiana and New York figures are through 21 of 22 home games (both averaged 16,000+). Remaining teams will be added from the final league report \u2014 the two lowest home averages in 2025 were Washington and Atlanta, both under 8,000.'
+},
+
+ncaam: {
+  season: '2025\u201326 season',
+  source: 'Figures as reported by schools to the NCAA (ticket-sold basis) via NCAA attendance reporting.',
+  ticketNote: 'College ticket pricing varies by school and seat type; no league-wide average is published.',
+  highlights: [
+    { big:'19,731', lbl:'#1 avg \u2014 Kentucky, 2025\u201326', note:'355,165 total at Rupp Arena, tops in D-I' },
+    { big:'354,933', lbl:'#2 total \u2014 North Carolina', note:'Kentucky edged UNC by just 232 total fans' },
+    { big:'23.7M', lbl:'D-I home attendance, 2024\u201325', note:'5,421 games across 355 Division I programs' },
+    { big:'12', lbl:'Big Ten & SEC teams each in top 50', note:'Most of any conferences in 2025\u201326 attendance' }
+  ],
+  cols: ['Program','Avg Home','Total Home','Home Gms','Avg Ticket'],
+  rows: [
+    ['Kentucky',19731,355165,18,null]
+  ],
+  rowNote: 'The full NCAA top-50 table (per-school averages) will be added next \u2014 attendance is self-reported to the NCAA on a tickets-sold basis, so some arenas report over 100% of capacity.'
+},
+
+nba: {
+  season: '2025\u201326 season',
+  source: 'Official NBA attendance report (regular season).',
+  ticketNote: 'The NBA does not publish average ticket prices; the Team Marketing Report Fan Cost Index is the standard source. A verified per-team ticket column will be added once we lock a source.',
+  highlights: [
+    { big:'17,791', lbl:'League avg per game, 2025\u201326', note:'Per the league attendance report' },
+    { big:'20,629', lbl:'Top home avg \u2014 Philadelphia', note:'76ers led all NBA home crowds' },
+    { big:'19,208', lbl:'2026 playoff avg per game', note:'1.63M total across 85 playoff games' },
+    { big:'#1', lbl:'Occupancy \u2014 Dallas Mavericks', note:'Highest % of arena capacity filled over the last decade' }
+  ],
+  cols: ['Team','Avg Home','Total Home','Home Gms','Avg Ticket'],
+  rows: [
+    ['Philadelphia 76ers',20629,639491,31,null],
+    ['Toronto Raptors',19796,633456,32,null],
+    ['Miami Heat',19680,629771,32,null],
+    ['Portland Trail Blazers',19634,628303,32,null],
+    ['Los Angeles Lakers',18997,588907,31,null],
+    ['New York Knicks',18812,620789,33,null],
+    ['San Antonio Spurs',18351,550515,30,null],
+    ['Utah Jazz',18306,567486,31,null],
+    ['Oklahoma City Thunder',18203,600699,33,null],
+    ['Orlando Magic',17093,529870,31,null],
+    ['Milwaukee Bucks',17711,549036,31,null],
+    ['Sacramento Kings',16796,520663,31,null],
+    ['Washington Wizards',16647,532702,32,null],
+    ['New Orleans Pelicans',16505,528172,32,null],
+    ['Memphis Grizzlies',15857,523297,33,null],
+    ['Phoenix Suns',15732,550633,35,null],
+    ['Minnesota Timberwolves',15067,482132,32,null]
+  ],
+  rowNote: 'Figures above are from the league attendance report as published in-season (home games played shown). Remaining teams will be added when we pull the complete final report.'
+}
+};
+
+/* ================= TEAM FACTS =================
+   EDIT HERE. titles = league championships (Super Bowl wins for NFL).
+   Counts current through July 2026. conf = conference titles (to be
+   verified in a later pass \u2014 shown as "\u2014" until filled).
+================================================ */
+const TITLE_LABEL = { nba:'NBA Championships', wnba:'WNBA Championships', nfl:'Super Bowl Wins', ncaam:'National Titles' };
+const TEAM_FACTS = {
+nba: {
+"Atlanta Hawks":{t:1,o:"Began as the Tri-Cities Blackhawks, named for Sauk leader Chief Black Hawk; shortened to Hawks on the move to Milwaukee."},
+"Boston Celtics":{t:18,o:"Named for Boston's large Irish-American community, echoing the famous original Celtics barnstorming team."},
+"Brooklyn Nets":{t:0,o:"Chosen to rhyme with New York's Mets and Jets \u2014 and to nod to the basketball net. Won 2 ABA titles before joining the NBA."},
+"Charlotte Hornets":{t:0,o:"From Charlotte's Revolutionary War nickname \u2014 a British general called the defiant city 'a hornet's nest of rebellion.'"},
+"Chicago Bulls":{t:6,o:"Honors Chicago's stockyards and meatpacking history, with the bull as a symbol of strength."},
+"Cleveland Cavaliers":{t:1,o:"Picked in a 1970 fan contest \u2014 a cavalier is a daring, swashbuckling swordsman."},
+"Dallas Mavericks":{t:1,o:"A maverick is an unbranded, independent-minded calf \u2014 a fit for Texas ranching culture."},
+"Denver Nuggets":{t:1,o:"A nod to Colorado's 19th-century gold and silver mining boom."},
+"Detroit Pistons":{t:3,o:"Founder Fred Zollner owned a piston factory; the Zollner Pistons kept the name when they moved to the Motor City."},
+"Golden State Warriors":{t:7,o:"Carried over from the original 1946 Philadelphia Warriors; 'Golden State' honors all of California."},
+"Houston Rockets":{t:2,o:"Began in San Diego with a space-age name that fit even better after moving to Houston, home of NASA Mission Control."},
+"Indiana Pacers":{t:0,o:"Named for harness-racing pacers and the Indy 500 pace car \u2014 both Indiana traditions. Won 3 ABA titles."},
+"LA Clippers":{t:0,o:"Named in San Diego for the clipper sailing ships that once filled its harbor."},
+"Los Angeles Lakers":{t:17,o:"Born in Minneapolis, the 'Land of 10,000 Lakes'; the name made the move west in 1960."},
+"Memphis Grizzlies":{t:0,o:"Began as the Vancouver Grizzlies, named for the great bears of the Pacific Northwest."},
+"Miami Heat":{t:3,o:"A fan-contest winner capturing South Florida's climate."},
+"Milwaukee Bucks":{t:2,o:"Fan contest pick honoring Wisconsin's white-tailed deer."},
+"Minnesota Timberwolves":{t:0,o:"Fan vote \u2014 Minnesota has the largest timberwolf population in the lower 48 states."},
+"New Orleans Pelicans":{t:0,o:"The brown pelican is Louisiana's state bird."},
+"New York Knicks":{t:3,o:"Short for 'Knickerbockers' \u2014 the rolled-up pants worn by New York's early Dutch settlers. Won it all in 2026, their first title since 1973."},
+"Oklahoma City Thunder":{t:1,o:"Named for the rolling thunderstorms of the Great Plains."},
+"Orlando Magic":{t:0,o:"A nod to Orlando's tourism identity and the Magic Kingdom next door."},
+"Philadelphia 76ers":{t:3,o:"Honors the signing of the Declaration of Independence in Philadelphia in 1776."},
+"Phoenix Suns":{t:0,o:"Fan contest pick celebrating the Valley of the Sun's 300+ days of sunshine."},
+"Portland Trail Blazers":{t:1,o:"Honors the pioneers who blazed the Oregon Trail west."},
+"Sacramento Kings":{t:1,o:"Began as the Rochester Royals (1951 champs); became Kings in Kansas City to avoid clashing with baseball's Royals."},
+"San Antonio Spurs":{t:5,o:"Named for the cowboy boot spur, a symbol of Texas ranching."},
+"Toronto Raptors":{t:1,o:"Fan vote held at the height of the mid-'90s Jurassic Park craze."},
+"Utah Jazz":{t:0,o:"Born as the New Orleans Jazz in honor of that city's music; the name stayed after the 1979 move to Utah."},
+"Washington Wizards":{t:1,o:"Renamed from the Bullets in 1997; the franchise's title came as the 1978 Washington Bullets."}
+},
+wnba: {
+"Atlanta Dream":{t:0,o:"Inspired by Dr. Martin Luther King Jr.'s 'I Have a Dream' speech \u2014 Atlanta is his hometown."},
+"Chicago Sky":{t:1,o:"Evokes the Chicago skyline and limitless potential; champions in 2021."},
+"Connecticut Sun":{t:0,o:"Owned by the Mohegan Tribe and named for the Mohegan Sun resort where they play."},
+"Dallas Wings":{t:3,o:"The franchise won 3 titles as the Detroit Shock; the Wings name and Pegasus logo honor the flying red horse atop Dallas's Magnolia Building."},
+"Golden State Valkyries":{t:0,o:"From Norse mythology \u2014 warrior women who decided the fates of battle. The 2025 expansion team sold out every home game in year one."},
+"Indiana Fever":{t:1,o:"Plays on 'basketball fever' in basketball-mad Indiana; champions in 2012."},
+"Las Vegas Aces":{t:3,o:"Renamed for the top card in the deck after relocating to Las Vegas; titles in 2022, 2023, and 2025."},
+"Los Angeles Sparks":{t:3,o:"An original 1997 franchise \u2014 the name evokes the spark that ignites LA."},
+"Minnesota Lynx":{t:4,o:"Named for the wild lynx of Minnesota's north woods, a natural partner to the Timberwolves."},
+"New York Liberty":{t:1,o:"Named for the Statue of Liberty; broke through for their first title in 2024."},
+"Phoenix Mercury":{t:3,o:"An original 1997 franchise \u2014 Mercury pairs with the Suns and fits the desert heat."},
+"Seattle Storm":{t:4,o:"Named for the storms that roll in off Puget Sound."},
+"Washington Mystics":{t:1,o:"Chosen to echo the Wizards' mystical theme after the NBA team's 1997 rebrand; champions in 2019."}
+},
+nfl: {
+"Arizona Cardinals":{t:0,o:"Pro football's oldest franchise (Chicago, 1898) \u2014 named when a founder called their faded maroon jerseys 'cardinal red.'"},
+"Atlanta Falcons":{t:0,o:"A schoolteacher's winning contest entry: the falcon is 'proud and dignified, with great courage and fight.'"},
+"Baltimore Ravens":{t:2,o:"Fan vote honoring Baltimore poet Edgar Allan Poe's 'The Raven.'"},
+"Buffalo Bills":{t:0,o:"Named for frontier showman Buffalo Bill Cody, carried over from the earlier AAFC Bills."},
+"Carolina Panthers":{t:0,o:"The panther was chosen for power and sleekness, representing both Carolinas."},
+"Chicago Bears":{t:1,o:"George Halas renamed the Decatur Staleys, reasoning football players were bigger, tougher versions of baseball's Cubs."},
+"Cincinnati Bengals":{t:0,o:"Paul Brown revived the name of Cincinnati's 1930s AFL Bengals."},
+"Cleveland Browns":{t:0,o:"Named for legendary founding coach Paul Brown; won 4 championships before the Super Bowl era."},
+"Dallas Cowboys":{t:5,o:"Nearly the 'Steers,' then 'Rangers,' before settling on Cowboys to capture Texas identity."},
+"Denver Broncos":{t:3,o:"Fan contest pick \u2014 a bronco is an untamed horse of the American West."},
+"Detroit Lions":{t:0,o:"Chose the 'king of beasts' to pair with baseball's Tigers; won 4 NFL titles before the Super Bowl era."},
+"Green Bay Packers":{t:4,o:"The Indian Packing Company bought the 1919 team's first uniforms; 13 total NFL championships, most all-time."},
+"Houston Texans":{t:0,o:"A straightforward tribute to the people of Texas, chosen over finalists like Stallions and Apollos."},
+"Indianapolis Colts":{t:2,o:"Named in Baltimore for the region's horse-breeding and racing heritage; the name moved west in 1984."},
+"Jacksonville Jaguars":{t:0,o:"1995 expansion fan vote \u2014 the jaguar's speed and ferocity fit a team built from scratch."},
+"Kansas City Chiefs":{t:4,o:"Honors KC mayor H. Roe Bartle, nicknamed 'The Chief,' who lured the team from Dallas in 1963."},
+"Las Vegas Raiders":{t:3,o:"Born in Oakland \u2014 'Raiders' replaced the original contest winner, the short-lived 'Se\u00f1ors.'"},
+"Los Angeles Chargers":{t:0,o:"Original owner Barron Hilton loved the 'Charge!' bugle call heard at LA sporting events."},
+"Los Angeles Rams":{t:2,o:"Founded in Cleveland and named after the powerhouse Fordham Rams college teams of the 1930s."},
+"Miami Dolphins":{t:2,o:"Fan contest pick \u2014 the dolphin: fast, smart, and a South Florida native."},
+"Minnesota Vikings":{t:0,o:"Honors the Upper Midwest's deep Scandinavian heritage."},
+"New England Patriots":{t:6,o:"Named for the Revolutionary War patriots of Boston, where the franchise began."},
+"New Orleans Saints":{t:1,o:"The franchise was awarded on November 1, 1966 \u2014 All Saints' Day \u2014 in the city of 'When the Saints Go Marching In.'"},
+"New York Giants":{t:4,o:"Borrowed from baseball's New York Giants, with whom they shared the Polo Grounds."},
+"New York Jets":{t:1,o:"Renamed from the Titans in 1963 \u2014 fitting for a team playing near LaGuardia's flight paths, and rhyming with Mets."},
+"Philadelphia Eagles":{t:2,o:"Named in 1933 for the eagle symbol of the New Deal's National Recovery Administration."},
+"Pittsburgh Steelers":{t:6,o:"Renamed from the Pirates in 1940 to honor the city's steel industry."},
+"San Francisco 49ers":{t:5,o:"Named for the prospectors of the 1849 California Gold Rush."},
+"Seattle Seahawks":{t:2,o:"Fan contest pick \u2014 'seahawk' is another name for the osprey of the Pacific Northwest. Fresh off winning Super Bowl LX in February 2026."},
+"Tampa Bay Buccaneers":{t:2,o:"Honors the pirates who prowled Florida's Gulf Coast in the 1700s."},
+"Tennessee Titans":{t:0,o:"Renamed from the Houston Oilers in 1999 \u2014 Nashville is the 'Athens of the South,' so Greek mythology fit."},
+"Washington Commanders":{t:3,o:"Adopted in 2022 as a nod to the capital's military leadership ties; all 3 Super Bowls came in the Redskins era."}
+}
+};
+
+/* ================= STATE ================= */
+let state = { league:'nba', view:'attendance', season:'' };
+const cache = {};
+
+/* ================= NAV ================= */
+function buildNav(){
+  const lt = document.getElementById('leagueTabs');
+  lt.innerHTML = Object.entries(LEAGUES).map(([id,l]) =>
+    `<button class="league-tab" data-league="${id}">${l.label}<small>${l.sub}</small></button>`).join('');
+  lt.addEventListener('click', e=>{
+    const b = e.target.closest('[data-league]'); if(!b) return;
+    state.league = b.dataset.league; syncNav(); render();
+  });
+  const vt = document.getElementById('viewTabs');
+  vt.innerHTML = VIEWS.map(v=>`<button class="view-tab" data-view="${v.id}">${v.label}</button>`).join('');
+  vt.addEventListener('click', e=>{
+    const b = e.target.closest('[data-view]'); if(!b) return;
+    state.view = b.dataset.view; syncNav(); render();
+  });
+  syncNav();
+}
+function syncNav(){
+  document.querySelectorAll('.league-tab').forEach(b=>b.classList.toggle('active', b.dataset.league===state.league));
+  document.querySelectorAll('.view-tab').forEach(b=>b.classList.toggle('active', b.dataset.view===state.view));
+  document.documentElement.style.setProperty('--accent', LEAGUES[state.league].accent);
+}
+
+/* ================= HELPERS ================= */
+const fmt = n => n==null ? '\u2014' : n.toLocaleString('en-US');
+const money = n => n==null ? '\u2014' : '$'+n.toFixed(2);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function getJSON(url, fresh){
+  if(!fresh && cache[url]) return cache[url];
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const j = await r.json();
+  cache[url] = j;
+  return j;
+}
+/* Pull TV networks and radio stations out of a competition's broadcast data */
+function broadcastInfo(comp){
+  const tv = new Set(), radio = new Set();
+  (comp?.geoBroadcasts||[]).forEach(g=>{
+    const name = g.media?.shortName; if(!name) return;
+    if((g.type?.shortName||'').toLowerCase().includes('radio')) radio.add(name); else tv.add(name);
+  });
+  (comp?.broadcasts||[]).forEach(b=>{
+    (b.names||[]).forEach(n=>tv.add(n));
+    if(b.media?.shortName) tv.add(b.media.shortName);
+  });
+  return { tv:[...tv], radio:[...radio] };
+}
+const gamecastURL = (eventId) => `https://www.espn.com/${LEAGUES[state.league].slug}/game/_/gameId/${eventId}`;
+const radioSearchURL = (teamName) => `https://tunein.com/search/?query=${encodeURIComponent(teamName+' radio')}`;
+function setMain(html){ document.getElementById('main').innerHTML = html; }
+function loadingMain(msg){ setMain(`<div class="loading">${msg}</div>`); }
+function errorMain(msg){ setMain(`<div class="error">${msg}<br><span style="font-size:12px">This section pulls live data \u2014 try refreshing, or the feed may be briefly unavailable.</span></div>`); }
+function header(title, sub){
+  return `<h2 class="section">${title}</h2><div class="rule"></div><div class="section-sub">${sub}</div>`;
+}
+function logoImg(team, size){
+  const src = team?.logos?.[0]?.href || team?.logo || '';
+  return src ? `<img src="${esc(src)}" alt="" loading="lazy">` : '';
+}
+/* Season dropdown: basketball leagues label seasons "2025\u201326" (API value = ending
+   year); NFL/WNBA are single-year seasons. Goes back 15 years. */
+function seasonOptions(){
+  const twoYear = (state.league==='nba' || state.league==='ncaam');
+  const latest = twoYear ? 2026 : (state.league==='nfl' ? 2025 : 2026);
+  let opts = `<option value="">Current season</option>`;
+  for(let y=latest; y>=latest-15; y--){
+    const label = twoYear ? `${y-1}\u2013${String(y).slice(2)}` : String(y);
+    opts += `<option value="${y}" ${String(y)===state.season?'selected':''}>${label}</option>`;
+  }
+  return `<div class="controls"><select id="seasonSel" aria-label="Season">${opts}</select></div>`;
+}
+function wireSeasonSel(){
+  const s = document.getElementById('seasonSel');
+  if(s) s.addEventListener('change', ()=>{ state.season = s.value; render(); });
+}
+const seasonParam = () => state.season ? `?season=${state.season}` : '';
+
+/* ================= RENDER: ATTENDANCE ================= */
+function renderAttendance(){
+  const L = LEAGUES[state.league];
+  const D = ATTENDANCE[state.league];
+  const cards = D.highlights.map(h=>
+    `<div class="stat-card"><div class="big">${h.big}</div><div class="lbl">${h.lbl}</div><div class="note">${h.note}</div></div>`).join('');
+  const head = D.cols.map((c,i)=>`<th class="${i>0?'num':''}">${c}</th>`).join('');
+  const sorted = D.rows.slice().sort((a,b)=>(b[1]||0)-(a[1]||0));
+  const body = sorted.map((r,i)=>`
+    <tr>
+      <td class="rank">${i+1}</td>
+      <td style="font-weight:600">${esc(r[0])}</td>
+      <td class="num">${fmt(r[1])}</td>
+      <td class="num">${fmt(r[2])}</td>
+      <td class="num">${fmt(r[3])}</td>
+      <td class="num">${money(r[4])}</td>
+    </tr>`).join('');
+  setMain(`
+    ${header(`${L.label} Attendance & Tickets`, `${D.season} <span class="pill">Verified data</span>`)}
+    <div class="cards">${cards}</div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th></th>${head}</tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+    ${D.rowNote?`<p class="footnote"><strong>Note:</strong> ${D.rowNote}</p>`:''}
+    <p class="footnote"><strong>Attendance source:</strong> ${D.source}</p>
+    <p class="footnote"><strong>Ticket prices:</strong> ${D.ticketNote}</p>
+  `);
+}
+
+/* ================= RENDER: STANDINGS ================= */
+async function renderStandings(){
+  const L = LEAGUES[state.league];
+  loadingMain('Pulling live standings\u2026');
+  try{
+    const j = await getJSON(API_V2(state.league)+'/standings'+seasonParam());
+    const groups = j.children?.length ? j.children : (j.standings ? [j] : []);
+    if(!groups.length) throw new Error('No standings data');
+    let html = header(`${L.label} Standings`, `Live from official league data <span class="pill">Auto-updating</span>`) + seasonOptions();
+    // For college, offer a conference selector
+    let shown = groups;
+    if(state.league==='ncaam' && groups.length>4){
+      const sel = groups.map((g,i)=>`<option value="${i}">${esc(g.name||g.abbreviation||('Group '+(i+1)))}</option>`).join('');
+      html += `<div class="controls"><select id="confSel" aria-label="Conference">${sel}</select></div><div id="standWrap"></div>`;
+      setMain(html);
+      wireSeasonSel();
+      const wrap = document.getElementById('standWrap');
+      const drawOne = idx => { wrap.innerHTML = standingsTable(groups[idx]); };
+      document.getElementById('confSel').addEventListener('change', e=>drawOne(+e.target.value));
+      drawOne(0);
+      return;
+    }
+    html += shown.map(standingsTable).join('<div style="height:18px"></div>');
+    setMain(html);
+    wireSeasonSel();
+  }catch(err){ errorMain('Could not load standings for that season.'); }
+}
+function standingsTable(group){
+  const entries = group.standings?.entries || [];
+  const stat = (e,names)=>{ for(const n of names){ const s=(e.stats||[]).find(x=>x.name===n||x.type===n); if(s) return s.displayValue ?? s.value; } return '\u2014'; };
+  const rows = entries.map((e,i)=>`
+    <tr>
+      <td class="rank">${i+1}</td>
+      <td><span class="teamcell">${logoImg(e.team)}<span>${esc(e.team?.displayName||e.team?.name||'')}</span></span></td>
+      <td class="num">${stat(e,['wins'])}</td>
+      <td class="num">${stat(e,['losses'])}</td>
+      <td class="num">${stat(e,['winPercent','winpercent'])}</td>
+      <td class="num">${stat(e,['gamesBehind','gamesbehind'])}</td>
+      <td class="num">${stat(e,['streak'])}</td>
+    </tr>`).join('');
+  return `
+    <h2 class="section" style="font-size:20px;margin-top:6px">${esc(group.name||'')}</h2>
+    <div class="table-scroll"><table>
+      <thead><tr><th></th><th>Team</th><th class="num">W</th><th class="num">L</th><th class="num">PCT</th><th class="num">GB</th><th class="num">STRK</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+/* ================= RENDER: LEADERS ================= */
+async function renderLeaders(){
+  const L = LEAGUES[state.league];
+  loadingMain('Pulling live stat leaders\u2026');
+  try{
+    const j = await getJSON(API_V3(state.league)+'/leaders'+seasonParam());
+    const cats = j.leaders?.categories || j.categories || [];
+    if(!cats.length) throw new Error('no cats');
+    const blocks = cats.slice(0,8).map(cat=>{
+      const rows = (cat.leaders||[]).slice(0,5).map((l,i)=>`
+        <tr>
+          <td class="rank">${i+1}</td>
+          <td style="font-weight:600">${esc(l.athlete?.displayName || l.athlete?.fullName || '\u2014')}</td>
+          <td>${esc(l.team?.abbreviation || l.athlete?.teamShortName || '')}</td>
+          <td class="num" style="font-weight:700">${esc(l.displayValue ?? l.value ?? '')}</td>
+        </tr>`).join('');
+      return `
+        <div>
+          <h2 class="section" style="font-size:19px;margin-top:8px">${esc(cat.displayName||cat.name||'')}</h2>
+          <div class="table-scroll"><table style="min-width:340px">
+            <thead><tr><th></th><th>Player</th><th>Team</th><th class="num">Value</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table></div>
+        </div>`;
+    }).join('');
+    setMain(`
+      ${header(`${L.label} Stat Leaders`, `Season leaders, live from official league data <span class="pill">Auto-updating</span>`)}
+      ${seasonOptions()}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">${blocks}</div>
+    `);
+    wireSeasonSel();
+  }catch(err){ errorMain('Could not load stat leaders for that season.'); }
+}
+
+/* ================= RENDER: TEAMS & ROSTERS ================= */
+async function renderTeams(){
+  const L = LEAGUES[state.league];
+  loadingMain('Loading teams\u2026');
+  try{
+    const limit = state.league==='ncaam' ? '&limit=500&groups=50' : '&limit=64';
+    const j = await getJSON(API(state.league)+'/teams?region=us'+limit);
+    const teams = (j.sports?.[0]?.leagues?.[0]?.teams || []).map(t=>t.team).filter(Boolean);
+    teams.sort((a,b)=>(a.displayName||'').localeCompare(b.displayName||''));
+    const search = state.league==='ncaam'
+      ? `<div class="controls"><input id="teamSearch" type="search" placeholder="Search ${teams.length} Division I programs\u2026" aria-label="Search teams"></div>` : '';
+    setMain(`
+      ${header(`${L.label} Teams`, `Tap a team to open its current roster <span class="pill">Live</span>`)}
+      ${search}
+      <div class="team-grid" id="teamGrid"></div>
+      <div id="rosterMount"></div>
+    `);
+    const grid = document.getElementById('teamGrid');
+    const draw = list => {
+      grid.innerHTML = list.map(t=>`
+        <button class="team-card" data-tid="${esc(t.id)}">
+          ${logoImg(t)}<span>${esc(t.displayName)}</span>
+        </button>`).join('') || '<div class="loading">No teams match.</div>';
+    };
+    draw(teams);
+    grid.addEventListener('click', e=>{
+      const b = e.target.closest('[data-tid]'); if(!b) return;
+      const t = teams.find(x=>String(x.id)===b.dataset.tid);
+      if(t) openRoster(t);
+    });
+    const inp = document.getElementById('teamSearch');
+    if(inp) inp.addEventListener('input', ()=>{
+      const q = inp.value.trim().toLowerCase();
+      draw(q ? teams.filter(t=>(t.displayName||'').toLowerCase().includes(q)) : teams);
+    });
+  }catch(err){ errorMain('Could not load teams right now.'); }
+}
+async function openRoster(team){
+  const mount = document.getElementById('rosterMount');
+  mount.innerHTML = `<div class="overlay" id="ov"><div class="panel">
+    <div class="panel-head">${logoImg(team)}<h3>${esc(team.displayName)}</h3>
+    <button class="close-btn" id="ovClose">Close</button></div>
+    <div id="teamBody"><div class="loading">Loading team profile\u2026</div></div>
+  </div></div>`;
+  const close = ()=>{ mount.innerHTML=''; };
+  document.getElementById('ovClose').addEventListener('click', close);
+  document.getElementById('ov').addEventListener('click', e=>{ if(e.target.id==='ov') close(); });
+  document.addEventListener('keydown', function esck(e){ if(e.key==='Escape'){close(); document.removeEventListener('keydown',esck);} });
+
+  const body = document.getElementById('teamBody');
+  const facts = TEAM_FACTS[state.league]?.[team.displayName];
+
+  // Fire all requests; render what we get, never block the whole panel on one failure.
+  const [detail, sched, roster, board] = await Promise.allSettled([
+    getJSON(API(state.league)+`/teams/${team.id}`),
+    getJSON(API(state.league)+`/teams/${team.id}/schedule`),
+    getJSON(API(state.league)+`/teams/${team.id}/roster`),
+    getJSON(API(state.league)+'/scoreboard', true)
+  ]);
+  let html = '';
+
+  /* ---- Live game (if this team is on the floor/field right now) ---- */
+  const findLiveEvent = (events) => (events||[]).find(ev => {
+    const c = ev.competitions?.[0];
+    return c && ev.status?.type?.state === 'in' &&
+      (c.competitors||[]).some(x => String(x.team?.id ?? x.id) === String(team.id));
+  });
+  const liveCardHTML = (ev) => {
+    const c = ev.competitions[0];
+    const comps = c.competitors || [];
+    const away = comps.find(x=>x.homeAway==='away') || comps[1] || {};
+    const home = comps.find(x=>x.homeAway==='home') || comps[0] || {};
+    const b = broadcastInfo(c);
+    const clock = ev.status?.type?.shortDetail || '';
+    const side = t2 => `<div class="side">${logoImg(t2.team)}<div class="abbr">${esc(t2.team?.abbreviation||'')}</div><div class="pts">${esc(t2.score ?? '')}</div></div>`;
+    return `
+      <div><span class="live-dot"></span><span class="live-tag">Live Now</span></div>
+      <div class="live-score">${side(away)}<div class="mid">${esc(clock)}</div>${side(home)}</div>
+      ${b.tv.length?`<div class="bcast">\ud83d\udcfa ${esc(b.tv.join(' \u00b7 '))}${b.radio.length?` &nbsp;\ud83d\udcfb ${esc(b.radio.join(' \u00b7 '))}`:''}</div>`:''}
+      <div class="watch-links">
+        <a class="watch-btn primary" href="${gamecastURL(ev.id)}" target="_blank" rel="noopener">Live Gamecast</a>
+        <a class="watch-btn" href="${radioSearchURL(team.displayName)}" target="_blank" rel="noopener">Listen \u00b7 Radio</a>
+      </div>`;
+  };
+  const liveEv = board.status==='fulfilled' ? findLiveEvent(board.value.events) : null;
+  html += `<div id="liveSlot">${liveEv ? `<div class="live-card">${liveCardHTML(liveEv)}</div>` : ''}</div>`;
+
+  /* ---- Stadium ---- */
+  const t = detail.status==='fulfilled' ? (detail.value.team || {}) : {};
+  const venue = t.franchise?.venue || t.venue || null;
+  if(venue){
+    const img = venue.images?.[0]?.href || '';
+    const loc = venue.address ? [venue.address.city, venue.address.state].filter(Boolean).join(', ') : '';
+    html += `
+      ${img?`<img src="${esc(img)}" alt="${esc(venue.fullName||'Stadium')}" style="width:100%;max-height:200px;object-fit:cover;display:block;border-bottom:3px solid var(--ink)">`:''}
+      <div style="padding:12px 16px 0">
+        <div style="font-family:'Barlow Condensed';font-weight:700;font-size:22px;text-transform:uppercase">${esc(venue.fullName||'')}</div>
+        <div style="font-size:13px;color:var(--muted)">${esc(loc)}${venue.capacity?` \u00b7 Capacity ${Number(venue.capacity).toLocaleString()}`:''}${venue.grass!=null?` \u00b7 ${venue.grass?'Grass':'Turf'}`:''}</div>
+      </div>`;
+  }
+
+  /* ---- Championships + record cards ---- */
+  const recItems = t.record?.items || [];
+  const rec = type => recItems.find(r=>r.type===type)?.summary ?? '\u2014';
+  html += `<div class="cards" style="padding:14px 16px 0;margin-bottom:0">
+    <div class="stat-card"><div class="big">${facts ? facts.t : '\u2014'}</div><div class="lbl">${TITLE_LABEL[state.league]}</div></div>
+    <div class="stat-card"><div class="big">${rec('total')}</div><div class="lbl">This Season</div></div>
+    <div class="stat-card"><div class="big">${rec('home')}</div><div class="lbl">Home</div></div>
+    <div class="stat-card"><div class="big">${rec('road')}</div><div class="lbl">Away</div></div>
+  </div>`;
+
+  /* ---- Name origin ---- */
+  if(facts){
+    html += `<div style="padding:12px 16px 0">
+      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600">Where the name comes from</div>
+      <p style="font-size:14px;margin-top:4px">${facts.o}</p>
+    </div>`;
+  }
+
+  /* ---- Last game / next game ---- */
+  if(sched.status==='fulfilled'){
+    const events = sched.value.events || [];
+    const now = Date.now();
+    const done = events.filter(e=>e.competitions?.[0]?.status?.type?.completed);
+    const upcoming = events.filter(e=>!e.competitions?.[0]?.status?.type?.completed && new Date(e.date).getTime() > now - 6*3600e3);
+    const last = done[done.length-1];
+    const next = t.nextEvent?.[0] || upcoming[0];
+    const gameCard = (ev, lbl) => {
+      if(!ev) return `<div class="stat-card"><div class="lbl">${lbl}</div><div class="note">Nothing on the schedule feed \u2014 check back closer to the season.</div></div>`;
+      const c = ev.competitions?.[0] || {};
+      const comps = c.competitors || [];
+      const opp = comps.find(x=>String(x.team?.id ?? x.id)!==String(team.id)) || {};
+      const us  = comps.find(x=>String(x.team?.id ?? x.id)===String(team.id)) || {};
+      const homeAway = us.homeAway==='home' ? 'vs' : '@';
+      const date = new Date(ev.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      const time = new Date(ev.date).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+      const usScore = us.score?.displayValue ?? us.score ?? '';
+      const oppScore = opp.score?.displayValue ?? opp.score ?? '';
+      const played = c.status?.type?.completed;
+      const wl = played ? (us.winner ? 'W' : (opp.winner ? 'L' : '')) : '';
+      const b = broadcastInfo(c);
+      const links = played
+        ? `<div class="watch-links" style="justify-content:flex-start"><a class="watch-btn" href="${gamecastURL(ev.id)}" target="_blank" rel="noopener">Box Score & Recap</a></div>`
+        : `<div class="watch-links" style="justify-content:flex-start">
+             <a class="watch-btn primary" href="${gamecastURL(ev.id)}" target="_blank" rel="noopener">Gamecast</a>
+             <a class="watch-btn" href="${radioSearchURL(team.displayName)}" target="_blank" rel="noopener">Listen</a>
+           </div>`;
+      return `<div class="stat-card">
+        <div class="lbl">${lbl}</div>
+        <div style="font-weight:700;font-size:16px;margin-top:4px">${homeAway} ${esc(opp.team?.displayName || 'TBD')}</div>
+        <div class="note">${date}${played?` \u00b7 <strong style="color:${wl==='W'?'var(--good)':'#A11'}">${wl} ${esc(usScore)}\u2013${esc(oppScore)}</strong>`:` \u00b7 ${time}`}</div>
+        ${!played && b.tv.length?`<div class="note">\ud83d\udcfa ${esc(b.tv.join(' \u00b7 '))}${b.radio.length?` \u00b7 \ud83d\udcfb ${esc(b.radio.join(' \u00b7 '))}`:''}</div>`:''}
+        ${links}
+      </div>`;
+    };
+    html += `<div class="cards" style="padding:12px 16px 0;margin-bottom:0;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+      ${gameCard(last,'Last Game')}${gameCard(next,'Next Game')}
+    </div>`;
+  }
+
+  /* ---- Roster ---- */
+  let rosterHTML = '<div class="loading">Roster unavailable right now.</div>';
+  if(roster.status==='fulfilled'){
+    let players = [];
+    (roster.value.athletes||[]).forEach(a=>{ if(a.items) players.push(...a.items); else players.push(a); });
+    if(players.length){
+      const rows = players.map(p=>`
+        <tr>
+          <td class="num" style="width:44px;color:var(--muted)">${esc(p.jersey ?? '')}</td>
+          <td style="font-weight:600">${esc(p.fullName || p.displayName || '')}</td>
+          <td>${esc(p.position?.abbreviation || p.position?.name || '')}</td>
+          <td class="num">${esc(p.displayHeight || '')}</td>
+          <td class="num">${esc(p.displayWeight || '')}</td>
+          <td class="num">${esc(p.age ?? '')}</td>
+        </tr>`).join('');
+      rosterHTML = `<div class="table-scroll"><table>
+        <thead><tr><th class="num">#</th><th>Player</th><th>Pos</th><th class="num">HT</th><th class="num">WT</th><th class="num">Age</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`;
+    }
+  }
+  html += `<div style="padding:14px 16px 16px">
+    <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:6px">Current Roster</div>
+    ${rosterHTML}
+  </div>`;
+
+  body.innerHTML = html;
+
+  /* ---- Auto-refresh the live score every 30s while the panel is open ---- */
+  const tick = setInterval(async ()=>{
+    if(!document.getElementById('liveSlot')){ clearInterval(tick); return; }
+    try{
+      const fresh = await getJSON(API(state.league)+'/scoreboard', true);
+      const ev = findLiveEvent(fresh.events);
+      const slot = document.getElementById('liveSlot');
+      if(slot) slot.innerHTML = ev ? `<div class="live-card">${liveCardHTML(ev)}</div>` : '';
+    }catch(e){}
+  }, 30000);
+}
+
+/* ================= RENDER: SCOREBOARD ================= */
+async function renderScores(refreshing){
+  const L = LEAGUES[state.league];
+  if(!refreshing) loadingMain('Checking today\u2019s slate\u2026');
+  try{
+    const j = await getJSON(API(state.league)+'/scoreboard', !!refreshing);
+    const events = j.events || [];
+    let inner;
+    if(!events.length){
+      inner = `<div class="loading">No ${L.label} games on today\u2019s board \u2014 check back on a game day.</div>`;
+    } else {
+      inner = `<div class="ticker">` + events.map(ev=>{
+        const c = ev.competitions?.[0]; if(!c) return '';
+        const comps = c.competitors || [];
+        const away = comps.find(x=>x.homeAway==='away') || comps[1] || {};
+        const home = comps.find(x=>x.homeAway==='home') || comps[0] || {};
+        const status = ev.status?.type?.shortDetail || '';
+        const isLive = ev.status?.type?.state === 'in';
+        const b = broadcastInfo(c);
+        const line = t => `<div class="row"><span>${logoImg(t.team)}${esc(t.team?.abbreviation || t.team?.shortDisplayName || '')}</span><span class="score">${esc(t.score ?? '')}</span></div>`;
+        return `<div class="game"><a href="${gamecastURL(ev.id)}" target="_blank" rel="noopener">
+          <div class="status">${isLive?'<span class="live-dot"></span>':''}${esc(status)}</div>
+          ${line(away)}${line(home)}
+          ${b.tv.length?`<div style="font-size:10px;color:var(--muted);margin-top:6px">\ud83d\udcfa ${esc(b.tv.slice(0,2).join(' \u00b7 '))}</div>`:''}
+        </a></div>`;
+      }).join('') + `</div>
+      <p class="footnote">Tap any game for the live gamecast, box score, and play-by-play. Scores refresh every 30 seconds.</p>`;
+    }
+    setMain(`${header(`${L.label} Scoreboard`, `Today\u2019s games, live <span class="pill">Auto-updating</span>`)}${inner}`);
+    clearInterval(window._sbTick);
+    window._sbTick = setInterval(()=>{
+      if(state.view!=='scores'){ clearInterval(window._sbTick); return; }
+      renderScores(true);
+    }, 30000);
+  }catch(err){ errorMain('Could not load the scoreboard right now.'); }
+}
+
+/* ================= ROUTER ================= */
+function render(){
+  ({ attendance:renderAttendance, standings:renderStandings, leaders:renderLeaders,
+     teams:renderTeams, scores:renderScores }[state.view] || renderAttendance)();
+}
+buildNav();
+render();
+</script>
+</body>
+</html>

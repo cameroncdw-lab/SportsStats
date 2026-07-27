@@ -155,6 +155,21 @@ tbody tr:hover{background:#FBFAF6}
 .bcast{font-size:12px;color:var(--muted);text-align:center;margin-top:6px}
 .game a{color:inherit;text-decoration:none}
 
+/* Capacity fill bar */
+.fillbar{position:relative;background:var(--paper);border:1px solid var(--line);height:14px;min-width:90px}
+.fillbar > span{position:absolute;inset:0;background:var(--accent);opacity:.85;transform-origin:left}
+.fillbar b{position:relative;z-index:1;font-size:10px;font-weight:700;padding-left:4px;line-height:14px;color:var(--ink)}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--accent)}
+th.sortable::after{content:' \u21C5';opacity:.4}
+.progress{font-size:13px;color:var(--muted);padding:10px 0}
+.build-btn{appearance:none;cursor:pointer;font-family:'Barlow Condensed';font-weight:700;font-size:18px;letter-spacing:.05em;text-transform:uppercase;
+  background:var(--accent);color:var(--accent-ink);border:2px solid var(--ink);padding:10px 20px}
+.build-btn:hover{filter:brightness(.88)}
+.build-btn:disabled{opacity:.5;cursor:wait}
+.panel-section{padding:14px 16px 0}
+.panel-section .lbl-sm{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:6px}
+
 footer{border-top:3px solid var(--ink);padding:20px 0 36px;font-size:12px;color:var(--muted);line-height:1.7}
 footer strong{color:var(--ink)}
 
@@ -476,6 +491,86 @@ function broadcastInfo(comp){
 }
 const gamecastURL = (eventId) => `https://www.espn.com/${LEAGUES[state.league].slug}/game/_/gameId/${eventId}`;
 const radioSearchURL = (teamName) => `https://tunein.com/search/?query=${encodeURIComponent(teamName+' radio')}`;
+
+/* ---------- Attendance crunching (live, from real game data) ---------- */
+async function inChunks(items, size, fn, onProgress){
+  const out = [];
+  for(let i=0;i<items.length;i+=size){
+    const chunk = items.slice(i,i+size);
+    const res = await Promise.allSettled(chunk.map(fn));
+    out.push(...res);
+    if(onProgress) onProgress(Math.min(i+size,items.length), items.length);
+  }
+  return out;
+}
+/* Get every completed game for a team+season with opponent, result, H/A, and crowd.
+   Tries the attendance field on the schedule feed first; falls back to pulling
+   each home game's box score. */
+async function getTeamGameLog(teamId, season, onProgress){
+  const url = API(state.league)+`/teams/${teamId}/schedule`+(season?`?season=${season}`:'');
+  const j = await getJSON(url);
+  const events = (j.events||[]).slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const rows = events.map(ev=>{
+    const c = ev.competitions?.[0] || {};
+    const comps = c.competitors || [];
+    const us  = comps.find(x=>String(x.team?.id ?? x.id)===String(teamId)) || {};
+    const opp = comps.find(x=>String(x.team?.id ?? x.id)!==String(teamId)) || {};
+    const completed = c.status?.type?.completed ?? ev.status?.type?.completed ?? false;
+    const sc = x => x.score?.displayValue ?? x.score?.value ?? x.score ?? '';
+    return {
+      id: ev.id, date: ev.date,
+      opp: opp.team?.displayName || 'TBD', oppLogo: opp.team?.logos?.[0]?.href || opp.team?.logo || '',
+      home: us.homeAway==='home', completed,
+      win: !!us.winner, usScore: sc(us), oppScore: sc(opp),
+      attendance: (c.attendance!=null && c.attendance>0) ? c.attendance : null
+    };
+  }).filter(r=>r.completed);
+  // Fallback: fetch box scores for home games missing a crowd figure
+  const need = rows.filter(r=>r.home && r.attendance==null);
+  if(need.length){
+    await inChunks(need, 6, async r=>{
+      const s = await getJSON(API(state.league)+`/summary?event=${r.id}`);
+      const a = s.gameInfo?.attendance;
+      if(a!=null && a>0) r.attendance = a;
+    }, onProgress);
+  }
+  return rows;
+}
+function homeAvg(rows){
+  const h = rows.filter(r=>r.home && r.attendance!=null);
+  if(!h.length) return {avg:null,total:null,games:0};
+  const total = h.reduce((s,r)=>s+r.attendance,0);
+  return {avg: Math.round(total/h.length), total, games:h.length};
+}
+/* Make any table sortable via click on th.sortable (data-col index, numeric-aware) */
+function makeSortable(tableEl){
+  tableEl.querySelectorAll('th.sortable').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const idx = +th.dataset.col;
+      const tbody = tableEl.querySelector('tbody');
+      const rows = [...tbody.querySelectorAll('tr')];
+      const dir = th.dataset.dir === 'desc' ? 'asc' : 'desc';
+      tableEl.querySelectorAll('th.sortable').forEach(x=>delete x.dataset.dir);
+      th.dataset.dir = dir;
+      const val = tr => {
+        const t = tr.children[idx]?.dataset.v ?? tr.children[idx]?.textContent ?? '';
+        const n = parseFloat(String(t).replace(/[^0-9.\-]/g,''));
+        return isNaN(n) ? String(t).toLowerCase() : n;
+      };
+      rows.sort((a,b)=>{
+        const x=val(a), y=val(b);
+        const c = (typeof x==='number' && typeof y==='number') ? x-y : String(x).localeCompare(String(y));
+        return dir==='desc' ? -c : c;
+      });
+      rows.forEach(r=>tbody.appendChild(r));
+    });
+  });
+}
+const fillBar = (avg, cap) => {
+  if(!avg || !cap) return '\u2014';
+  const pct = Math.round(avg/cap*100);
+  return `<div class="fillbar"><span style="transform:scaleX(${Math.min(pct,100)/100})"></span><b>${pct}%</b></div>`;
+};
 function setMain(html){ document.getElementById('main').innerHTML = html; }
 function loadingMain(msg){ setMain(`<div class="loading">${msg}</div>`); }
 function errorMain(msg){ setMain(`<div class="error">${msg}<br><span style="font-size:12px">This section pulls live data \u2014 try refreshing, or the feed may be briefly unavailable.</span></div>`); }
@@ -505,35 +600,130 @@ function wireSeasonSel(){
 const seasonParam = () => state.season ? `?season=${state.season}` : '';
 
 /* ================= RENDER: ATTENDANCE ================= */
+const liveAttCache = {};
 function renderAttendance(){
   const L = LEAGUES[state.league];
   const D = ATTENDANCE[state.league];
   const cards = D.highlights.map(h=>
     `<div class="stat-card"><div class="big">${h.big}</div><div class="lbl">${h.lbl}</div><div class="note">${h.note}</div></div>`).join('');
-  const head = D.cols.map((c,i)=>`<th class="${i>0?'num':''}">${c}</th>`).join('');
+  const head = D.cols.map((c,i)=>`<th class="sortable ${i>0?'num':''}" data-col="${i+1}">${c}</th>`).join('');
   const sorted = D.rows.slice().sort((a,b)=>(b[1]||0)-(a[1]||0));
   const body = sorted.map((r,i)=>`
     <tr>
       <td class="rank">${i+1}</td>
       <td style="font-weight:600">${esc(r[0])}</td>
-      <td class="num">${fmt(r[1])}</td>
-      <td class="num">${fmt(r[2])}</td>
-      <td class="num">${fmt(r[3])}</td>
-      <td class="num">${money(r[4])}</td>
+      <td class="num" data-v="${r[1]??''}">${fmt(r[1])}</td>
+      <td class="num" data-v="${r[2]??''}">${fmt(r[2])}</td>
+      <td class="num" data-v="${r[3]??''}">${fmt(r[3])}</td>
+      <td class="num" data-v="${r[4]??''}">${money(r[4])}</td>
     </tr>`).join('');
+
+  // Live builder available where a full league crunch is practical
+  const canBuild = ['wnba','nba','nfl','ncaam'].includes(state.league);
+  const twoYear = (state.league==='nba'||state.league==='ncaam');
+  const latest = state.league==='nfl' ? 2025 : 2026;
+  let yearOpts = '';
+  for(let y=latest; y>=latest-11; y--){
+    const label = twoYear ? `${y-1}\u2013${String(y).slice(2)}` : String(y);
+    yearOpts += `<option value="${y}">${label}${(state.league==='wnba'&&y===2026)?' (in progress)':''}</option>`;
+  }
+  const builder = canBuild ? `
+    <h2 class="section" style="font-size:20px;margin-top:26px">Any Season, Every Team \u2014 Built From Real Game Data</h2>
+    <div class="rule"></div>
+    <div class="section-sub">${state.league==='ncaam'
+      ? 'Pick a season and the site pulls real home-game crowds for 30 of the nation\u2019s biggest home draws \u2014 arena, capacity, average, total, and how full the building was. Every other program\u2019s numbers are in its team profile under Teams &amp; Rosters.'
+      : 'Pick a season and the site pulls every team\u2019s actual home game crowds from the official data feed \u2014 arena, capacity, average, total, and how full the building was.'}</div>
+    <div class="controls">
+      <select id="liveYear">${yearOpts}</select>
+      <button class="build-btn" id="buildBtn">\u26A1 Build Table</button>
+    </div>
+    <div id="liveProgress" class="progress" style="display:none"></div>
+    <div id="liveTableWrap"></div>` : `
+    <p class="footnote" style="margin-top:20px"><strong>Want more teams or past seasons?</strong> Open any program under Teams & Rosters \u2014 every team profile has a full game-by-game attendance log for any season, computed live from real game data.</p>`;
+
   setMain(`
     ${header(`${L.label} Attendance & Tickets`, `${D.season} <span class="pill">Verified data</span>`)}
     <div class="cards">${cards}</div>
-    <div class="table-scroll">
-      <table>
+    <div class="table-scroll"><table id="curatedAtt">
         <thead><tr><th></th>${head}</tr></thead>
         <tbody>${body}</tbody>
-      </table>
-    </div>
+    </table></div>
     ${D.rowNote?`<p class="footnote"><strong>Note:</strong> ${D.rowNote}</p>`:''}
     <p class="footnote"><strong>Attendance source:</strong> ${D.source}</p>
     <p class="footnote"><strong>Ticket prices:</strong> ${D.ticketNote}</p>
+    ${builder}
   `);
+  makeSortable(document.getElementById('curatedAtt'));
+  const btn = document.getElementById('buildBtn');
+  if(btn) btn.addEventListener('click', buildLiveLeagueTable);
+}
+
+async function buildLiveLeagueTable(){
+  const season = document.getElementById('liveYear').value;
+  const key = state.league+'|'+season;
+  const wrap = document.getElementById('liveTableWrap');
+  const prog = document.getElementById('liveProgress');
+  const btn = document.getElementById('buildBtn');
+  const draw = rows => {
+    const trs = rows.slice().sort((a,b)=>(b.avg||0)-(a.avg||0)).map((r,i)=>`
+      <tr>
+        <td class="rank">${i+1}</td>
+        <td><span class="teamcell">${r.logo?`<img src="${esc(r.logo)}" alt="">`:''}<span>${esc(r.name)}</span></span></td>
+        <td>${esc(r.arena||'\u2014')}</td>
+        <td class="num" data-v="${r.cap??''}">${fmt(r.cap)}</td>
+        <td class="num" data-v="${r.avg??''}">${fmt(r.avg)}</td>
+        <td class="num" data-v="${r.total??''}">${fmt(r.total)}</td>
+        <td class="num" data-v="${r.games??''}">${fmt(r.games)}</td>
+        <td data-v="${r.avg&&r.cap?Math.round(r.avg/r.cap*100):''}">${fillBar(r.avg,r.cap)}</td>
+      </tr>`).join('');
+    wrap.innerHTML = `<div class="table-scroll"><table id="liveAttTable" style="min-width:760px">
+      <thead><tr><th></th>
+        <th class="sortable" data-col="1">Team</th>
+        <th class="sortable" data-col="2">Arena (current)</th>
+        <th class="sortable num" data-col="3">Capacity</th>
+        <th class="sortable num" data-col="4">Avg Home</th>
+        <th class="sortable num" data-col="5">Total Home</th>
+        <th class="sortable num" data-col="6">Gms</th>
+        <th class="sortable" data-col="7">% Full</th>
+      </tr></thead><tbody>${trs}</tbody></table></div>
+      <p class="footnote">Computed live from the official per-game attendance figures on each game's stat sheet. Arena and capacity reflect the team's current building.</p>`;
+    makeSortable(document.getElementById('liveAttTable'));
+  };
+  if(liveAttCache[key]){ draw(liveAttCache[key]); return; }
+  btn.disabled = true; prog.style.display='block';
+  try{
+    /* College: crunch the ~30 programs that are perennially the biggest home draws
+       (a full 360-school crunch would take too long in the browser). Any other
+       program's numbers live in its team profile. */
+    const BIG_DRAWS = ['Kentucky','Syracuse','North Carolina','Tennessee','Louisville','Kansas','Indiana','Wisconsin','Purdue','Michigan State','Ohio State','Illinois','Nebraska','Creighton','Arkansas','BYU','Memphis','Alabama','Iowa','Maryland','Marquette','Dayton','Texas Tech','NC State','Michigan','Duke','Auburn','Iowa State','Cincinnati','Texas'];
+    const limit = state.league==='ncaam' ? '&limit=500&groups=50' : '&limit=64';
+    const tj = await getJSON(API(state.league)+'/teams?region=us'+limit);
+    let teams = (tj.sports?.[0]?.leagues?.[0]?.teams || []).map(t=>t.team).filter(Boolean);
+    if(state.league==='ncaam'){
+      teams = teams.filter(t => BIG_DRAWS.includes(t.location) || BIG_DRAWS.includes(t.shortDisplayName));
+    }
+    const rows = [];
+    let done = 0;
+    await inChunks(teams, 4, async t=>{
+      let arena=null, cap=null;
+      try{
+        const d = await getJSON(API(state.league)+`/teams/${t.id}`);
+        const v = d.team?.franchise?.venue || d.team?.venue;
+        if(v){ arena = v.fullName; cap = v.capacity ? Number(v.capacity) : null; }
+      }catch(e){}
+      let stats = {avg:null,total:null,games:0};
+      try{ stats = homeAvg(await getTeamGameLog(t.id, season)); }catch(e){}
+      rows.push({ name:t.displayName, logo:t.logos?.[0]?.href||'', arena, cap, ...stats });
+      done++;
+      prog.textContent = `Crunching real game data\u2026 ${done} of ${teams.length} teams`;
+      if(done % 4 === 0 || done===teams.length) draw(rows);
+    });
+    liveAttCache[key] = rows;
+    draw(rows);
+  }catch(err){
+    wrap.innerHTML = `<div class="error">Couldn't finish building the table \u2014 the data feed may be rate-limiting. Try again in a minute.</div>`;
+  }
+  prog.style.display='none'; btn.disabled = false;
 }
 
 /* ================= RENDER: STANDINGS ================= */
@@ -553,7 +743,7 @@ async function renderStandings(){
       setMain(html);
       wireSeasonSel();
       const wrap = document.getElementById('standWrap');
-      const drawOne = idx => { wrap.innerHTML = standingsTable(groups[idx]); };
+      const drawOne = idx => { wrap.innerHTML = standingsTable(groups[idx]); wireStandingsSort(); };
       document.getElementById('confSel').addEventListener('change', e=>drawOne(+e.target.value));
       drawOne(0);
       return;
@@ -561,28 +751,40 @@ async function renderStandings(){
     html += shown.map(standingsTable).join('<div style="height:18px"></div>');
     setMain(html);
     wireSeasonSel();
+    wireStandingsSort();
   }catch(err){ errorMain('Could not load standings for that season.'); }
 }
 function standingsTable(group){
   const entries = group.standings?.entries || [];
-  const stat = (e,names)=>{ for(const n of names){ const s=(e.stats||[]).find(x=>x.name===n||x.type===n); if(s) return s.displayValue ?? s.value; } return '\u2014'; };
+  const stat = (e,names)=>{ for(const n of names){ const s=(e.stats||[]).find(x=>x.name===n||x.type===n||x.abbreviation===n); if(s) return s.displayValue ?? s.value; } return '\u2014'; };
   const rows = entries.map((e,i)=>`
     <tr>
       <td class="rank">${i+1}</td>
       <td><span class="teamcell">${logoImg(e.team)}<span>${esc(e.team?.displayName||e.team?.name||'')}</span></span></td>
-      <td class="num">${stat(e,['wins'])}</td>
-      <td class="num">${stat(e,['losses'])}</td>
-      <td class="num">${stat(e,['winPercent','winpercent'])}</td>
+      <td class="num" data-v="${stat(e,['wins'])}">${stat(e,['wins'])}</td>
+      <td class="num" data-v="${stat(e,['losses'])}">${stat(e,['losses'])}</td>
+      <td class="num" data-v="${stat(e,['winPercent','winpercent'])}">${stat(e,['winPercent','winpercent'])}</td>
       <td class="num">${stat(e,['gamesBehind','gamesbehind'])}</td>
+      <td class="num" data-v="${stat(e,['avgPointsFor','pointsFor','PF'])}">${stat(e,['avgPointsFor','pointsFor','PF'])}</td>
+      <td class="num" data-v="${stat(e,['avgPointsAgainst','pointsAgainst','PA'])}">${stat(e,['avgPointsAgainst','pointsAgainst','PA'])}</td>
+      <td class="num" data-v="${stat(e,['differential','pointDifferential','DIFF'])}">${stat(e,['differential','pointDifferential','DIFF'])}</td>
+      <td class="num">${stat(e,['Home','home'])}</td>
+      <td class="num">${stat(e,['Road','road','Away'])}</td>
       <td class="num">${stat(e,['streak'])}</td>
     </tr>`).join('');
+  const tid = 'st'+Math.random().toString(36).slice(2,8);
   return `
     <h2 class="section" style="font-size:20px;margin-top:6px">${esc(group.name||'')}</h2>
-    <div class="table-scroll"><table>
-      <thead><tr><th></th><th>Team</th><th class="num">W</th><th class="num">L</th><th class="num">PCT</th><th class="num">GB</th><th class="num">STRK</th></tr></thead>
+    <div class="table-scroll"><table id="${tid}" style="min-width:820px">
+      <thead><tr><th></th><th class="sortable" data-col="1">Team</th>
+        <th class="sortable num" data-col="2">W</th><th class="sortable num" data-col="3">L</th>
+        <th class="sortable num" data-col="4">PCT</th><th class="num">GB</th>
+        <th class="sortable num" data-col="6">PF</th><th class="sortable num" data-col="7">PA</th>
+        <th class="sortable num" data-col="8">DIFF</th><th class="num">HOME</th><th class="num">AWAY</th><th class="num">STRK</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
 }
+function wireStandingsSort(){ document.querySelectorAll('table[id^="st"]').forEach(makeSortable); }
 
 /* ================= RENDER: LEADERS ================= */
 async function renderLeaders(){
@@ -592,29 +794,46 @@ async function renderLeaders(){
     const j = await getJSON(API_V3(state.league)+'/leaders'+seasonParam());
     const cats = j.leaders?.categories || j.categories || [];
     if(!cats.length) throw new Error('no cats');
-    const blocks = cats.slice(0,8).map(cat=>{
-      const rows = (cat.leaders||[]).slice(0,5).map((l,i)=>`
-        <tr>
-          <td class="rank">${i+1}</td>
-          <td style="font-weight:600">${esc(l.athlete?.displayName || l.athlete?.fullName || '\u2014')}</td>
-          <td>${esc(l.team?.abbreviation || l.athlete?.teamShortName || '')}</td>
-          <td class="num" style="font-weight:700">${esc(l.displayValue ?? l.value ?? '')}</td>
-        </tr>`).join('');
-      return `
-        <div>
-          <h2 class="section" style="font-size:19px;margin-top:8px">${esc(cat.displayName||cat.name||'')}</h2>
-          <div class="table-scroll"><table style="min-width:340px">
-            <thead><tr><th></th><th>Player</th><th>Team</th><th class="num">Value</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table></div>
-        </div>`;
-    }).join('');
+    const drawCats = (filter) => {
+      const f = (filter||'').trim().toLowerCase();
+      return cats.map(cat=>{
+        let list = (cat.leaders||[]);
+        if(f) list = list.filter(l =>
+          (l.athlete?.displayName||l.athlete?.fullName||'').toLowerCase().includes(f) ||
+          (l.team?.abbreviation||'').toLowerCase().includes(f) ||
+          (l.team?.displayName||'').toLowerCase().includes(f));
+        list = list.slice(0, f?25:10);
+        if(!list.length) return '';
+        const rows = list.map((l,i)=>`
+          <tr>
+            <td class="rank">${i+1}</td>
+            <td style="font-weight:600">${esc(l.athlete?.displayName || l.athlete?.fullName || '\u2014')}</td>
+            <td>${esc(l.team?.abbreviation || l.athlete?.teamShortName || '')}</td>
+            <td class="num" style="font-weight:700">${esc(l.displayValue ?? l.value ?? '')}</td>
+          </tr>`).join('');
+        return `
+          <div>
+            <h2 class="section" style="font-size:19px;margin-top:8px">${esc(cat.displayName||cat.name||'')}</h2>
+            <div class="table-scroll"><table style="min-width:340px">
+              <thead><tr><th></th><th>Player</th><th>Team</th><th class="num">Value</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table></div>
+          </div>`;
+      }).join('') || '<div class="loading">No players match that filter.</div>';
+    };
     setMain(`
-      ${header(`${L.label} Stat Leaders`, `Season leaders, live from official league data <span class="pill">Auto-updating</span>`)}
+      ${header(`${L.label} Stat Leaders`, `Every category, live from official league data <span class="pill">Auto-updating</span>`)}
       ${seasonOptions()}
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">${blocks}</div>
+      <div class="controls">
+        <input id="leaderFilter" type="search" placeholder="Filter by player or team (e.g. Clark, IND)\u2026" aria-label="Filter leaders" style="min-width:280px">
+      </div>
+      <div id="leaderGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">${drawCats('')}</div>
     `);
     wireSeasonSel();
+    const inp = document.getElementById('leaderFilter');
+    inp.addEventListener('input', ()=>{
+      document.getElementById('leaderGrid').innerHTML = drawCats(inp.value);
+    });
   }catch(err){ errorMain('Could not load stat leaders for that season.'); }
 }
 
@@ -803,7 +1022,64 @@ async function openRoster(team){
     ${rosterHTML}
   </div>`;
 
+  /* ---- Game-by-game attendance log ---- */
+  const twoYear = (state.league==='nba'||state.league==='ncaam');
+  const latestSeason = state.league==='nfl' ? 2025 : 2026;
+  let logYears = '';
+  for(let y=latestSeason; y>=latestSeason-11; y--){
+    logYears += `<option value="${y}">${twoYear?`${y-1}\u2013${String(y).slice(2)}`:y}</option>`;
+  }
+  const venueCap = venue?.capacity ? Number(venue.capacity) : null;
+  html += `<div class="panel-section" style="padding-bottom:16px">
+    <div class="lbl-sm">Game-By-Game Attendance Log</div>
+    <div class="controls" style="margin-bottom:10px">
+      <select id="logSeason">${logYears}</select>
+    </div>
+    <div id="logStats"></div>
+    <div id="logWrap"><div class="progress">Pulling the season's games\u2026</div></div>
+  </div>`;
+
   body.innerHTML = html;
+
+  /* Load + render the game log for a chosen season */
+  const loadLog = async (season) => {
+    const wrapEl = document.getElementById('logWrap');
+    const statsEl = document.getElementById('logStats');
+    if(!wrapEl) return;
+    wrapEl.innerHTML = '<div class="progress">Pulling the season\u2019s games\u2026</div>';
+    statsEl.innerHTML = '';
+    try{
+      const rows = await getTeamGameLog(team.id, season, (d,tot)=>{
+        const p = wrapEl.querySelector('.progress');
+        if(p) p.textContent = `Pulling crowd figures from box scores\u2026 ${d} of ${tot} home games`;
+      });
+      if(!rows.length){ wrapEl.innerHTML = '<div class="progress">No completed games on the feed for that season.</div>'; return; }
+      const ha = homeAvg(rows);
+      statsEl.innerHTML = `<div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:10px">
+        <div class="stat-card"><div class="big">${fmt(ha.avg)}</div><div class="lbl">Avg Home Crowd</div></div>
+        <div class="stat-card"><div class="big">${fmt(ha.total)}</div><div class="lbl">Total Home (${ha.games} gms)</div></div>
+        <div class="stat-card"><div class="big" style="font-size:26px;padding-top:6px">${(ha.avg&&venueCap)?Math.round(ha.avg/venueCap*100)+'%':'\u2014'}</div><div class="lbl">Of Capacity${venueCap?` (${venueCap.toLocaleString()})`:''}</div></div>
+      </div>`;
+      const trs = rows.map(r=>{
+        const d = new Date(r.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
+        return `<tr>
+          <td style="white-space:nowrap">${d}</td>
+          <td><span class="teamcell" style="font-weight:500">${r.oppLogo?`<img src="${esc(r.oppLogo)}" alt="">`:''}<span>${r.home?'vs':'@'} ${esc(r.opp)}</span></span></td>
+          <td class="num" style="white-space:nowrap;color:${r.win?'var(--good)':'#A11'};font-weight:700">${r.win?'W':'L'} ${esc(r.usScore)}\u2013${esc(r.oppScore)}</td>
+          <td class="num" data-v="${r.attendance??''}">${r.home ? fmt(r.attendance) : `<span style="color:var(--muted)">${fmt(r.attendance)}</span>`}</td>
+        </tr>`;
+      }).join('');
+      wrapEl.innerHTML = `<div class="table-scroll"><table id="logTable" style="min-width:480px">
+        <thead><tr><th class="sortable" data-col="0">Date</th><th class="sortable" data-col="1">Opponent</th><th class="num">Result</th><th class="sortable num" data-col="3">Attendance</th></tr></thead>
+        <tbody>${trs}</tbody></table></div>
+        <p class="footnote">Crowd figures come from each game's official box score. Home crowds shown in black; road-game crowds (the other team's building) in gray.</p>`;
+      makeSortable(document.getElementById('logTable'));
+    }catch(err){
+      wrapEl.innerHTML = '<div class="error">Couldn\u2019t load that season\u2019s games \u2014 try another year.</div>';
+    }
+  };
+  document.getElementById('logSeason').addEventListener('change', e=>loadLog(e.target.value));
+  loadLog(latestSeason);
 
   /* ---- Auto-refresh the live score every 30s while the panel is open ---- */
   const tick = setInterval(async ()=>{

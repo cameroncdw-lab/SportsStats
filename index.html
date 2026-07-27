@@ -437,6 +437,116 @@ nfl: {
 }
 };
 
+const NCAA_ARENAS = [
+["Syracuse","JMA Wireless Dome","ACC",35446],
+["Louisville","KFC Yum! Center","ACC",22090],
+["North Carolina","Dean E. Smith Center","ACC",21750],
+["Tennessee","Food City Center (Thompson-Boling)","SEC",21678],
+["UNC Greensboro","First Horizon Coliseum","Southern",20548],
+["Kentucky","Rupp Arena","SEC",20500],
+["Georgetown","Capital One Arena","Big East",20356],
+["St. John's","Madison Square Garden","Big East",19812],
+["NC State","Lenovo Center","ACC",19722],
+["Arkansas","Bud Walton Arena","SEC",19368],
+["Ohio State","Value City Arena (Schottenstein Center)","Big Ten",18809],
+["UNLV","Thomas & Mack Center","Mountain West",18776],
+["Seton Hall","Prudential Center","Big East",18711],
+["Memphis","FedExForum","American",18119],
+["South Carolina","Colonial Life Arena","SEC",18000],
+["BYU","Marriott Center","Big 12",17978],
+["Maryland","Xfinity Center","Big Ten",17950],
+["Creighton","CHI Health Center Omaha","Big East",17560],
+["Marquette","Fiserv Forum","Big East",17341],
+["Wisconsin","Kohl Center","Big Ten",17287],
+["Indiana","Simon Skjodt Assembly Hall","Big Ten",17222],
+["Kansas","Allen Fieldhouse","Big 12",16300],
+["Fresno State","Save Mart Center","Pac-12",16182],
+["UConn","XL Center (part-time home)","Big East",15564],
+["Illinois","State Farm Center","Big Ten",15544],
+["Nebraska","Pinnacle Bank Arena","Big Ten",15500],
+["New Mexico","The Pit","Mountain West",15411],
+["Alabama","Coleman Coliseum","SEC",15383],
+["Penn State","Bryce Jordan Center","Big Ten",15261],
+["Texas Tech","United Supermarkets Arena","Big 12",15098],
+["Missouri","Mizzou Arena","SEC",15061],
+["Iowa","Carver-Hawkeye Arena","Big Ten",15056],
+["Wyoming","Arena-Auditorium","Mountain West",15028],
+["Utah","Jon M. Huntsman Center","Big 12",15000],
+["Purdue","Mackey Arena","Big Ten",14804],
+["Michigan State","Breslin Center","Big Ten",14797],
+["Wake Forest","Lawrence Joel Veterans Memorial Coliseum","ACC",14665],
+["Arizona","McKale Center","Big 12",14644],
+["Minnesota","Williams Arena","Big Ten",14625],
+["Virginia","John Paul Jones Arena","ACC",14593],
+["Iowa State","Hilton Coliseum","Big 12",14384],
+["Vanderbilt","Memorial Gymnasium","SEC",14316],
+["Arizona State","Desert Financial Arena","Big 12",14198],
+["West Virginia","WVU Coliseum","Big 12",14000],
+["UCLA","Pauley Pavilion","Big Ten",13800],
+["Oklahoma State","Gallagher-Iba Arena","Big 12",13611],
+["Cleveland State","Wolstein Center","Horizon",13610],
+["Dayton","UD Arena","Atlantic 10",13407],
+["LSU","Pete Maravich Assembly Center","SEC",13215],
+["Ohio","Convocation Center","MAC",13080],
+["Texas A&M","Reed Arena","SEC",12989],
+["Michigan","Crisler Center","Big Ten",12707],
+["Boise State","ExtraMile Arena","Pac-12",12644],
+["Kansas State","Bramlage Coliseum","Big 12",12528],
+["Pittsburgh","Petersen Events Center","ACC",12508],
+["New Mexico State","Pan American Center","Conference USA",12482],
+["San Diego State","Viejas Arena","Pac-12",12414],
+["Providence","Amica Mutual Pavilion","Big East",12400],
+["Oregon","Matthew Knight Arena","Big Ten",12364],
+["Florida State","Donald L. Tucker Civic Center","ACC",12100],
+["Cincinnati","Fifth Third Arena","Big 12",12012],
+["UTEP","Don Haskins Center","Conference USA",11892],
+["California","Haas Pavilion","ACC",11877],
+["Washington State","Beasley Coliseum","Pac-12",11671],
+["Oklahoma","Lloyd Noble Center","SEC",11562],
+["Louisiana","Cajundome","Sun Belt",11550],
+["Nevada","Lawlor Events Center","Mountain West",11536],
+["Middle Tennessee","Murphy Center","Conference USA",11520],
+["Ball State","Worthen Arena","MAC",11500],
+["Bradley","Carver Arena","Missouri Valley",11300],
+["Colorado","CU Events Center","Big 12",11064],
+["Missouri State","Great Southern Bank Arena","Conference USA",11000],
+["Evansville","Ford Center","Missouri Valley",11000],
+["Chattanooga","McKenzie Arena","Southern",10995],
+["Milwaukee","UW\u2013Milwaukee Panther Arena","Horizon",10783],
+["Texas","Moody Center","SEC",10763],
+["Mississippi State","Humphrey Coliseum","SEC",10575],
+["Oral Roberts","Mabee Center","Summit",10575],
+["Arkansas State","First National Bank Arena","Sun Belt",10563],
+["Georgia","Stegeman Coliseum","SEC",10523],
+["Wichita State","Charles Koch Arena","American",10506],
+["South Florida","Yuengling Center","American",10411],
+["Hawai'i","SimpliFi Arena at Stan Sheriff Center","Big West",10300],
+["Utah State","Dee Glen Smith Spectrum","Pac-12",10270],
+["USC","Galen Center","Big Ten",10258],
+["Xavier","Cintas Center","Big East",10224],
+["Temple","Liacouras Center","American",10206],
+["Illinois State","CEFCU Arena","Missouri Valley",10200],
+["Indiana State","Hulman Center","Missouri Valley",10200],
+["Florida","Exactech Arena (O'Connell Center)","SEC",10136],
+["Virginia Tech","Cassell Coliseum","ACC",10052],
+["South Alabama","Mitchell Center","Sun Belt",10041],
+["North Texas","The Super Pit","American",10032],
+["Washington","Alaska Airlines Arena (Hec Edmundson)","Big Ten",10000],
+["UCF","Addition Financial Arena","Big 12",10000],
+["George Mason","EagleBank Arena","Atlantic 10",10000],
+["Texas State","Strahan Arena","Pac-12",10000],
+["Oregon State","Gill Coliseum","Pac-12",9604],
+["Ole Miss","Sandy and John Black Pavilion","SEC",9500],
+["UMass","Mullins Center","Atlantic 10",9493],
+["Marshall","Cam Henderson Center","Sun Belt",9450],
+["Northern Kentucky","Truist Arena","Horizon",9400],
+["Duke","Cameron Indoor Stadium","ACC",9314],
+["Notre Dame","Purcell Pavilion","ACC",9149],
+["Auburn","Neville Arena","SEC",9121],
+["Butler","Hinkle Fieldhouse","Big East",9100],
+["Charlotte","Dale F. Halton Arena","American",9105]
+];
+
 /* ================= STATE ================= */
 let state = { league:'nba', view:'attendance', season:'' };
 const cache = {};
@@ -619,7 +729,7 @@ function renderAttendance(){
     </tr>`).join('');
 
   // Live builder available where a full league crunch is practical
-  const canBuild = ['wnba','nba','nfl','ncaam'].includes(state.league);
+  const canBuild = ['wnba','nba','nfl'].includes(state.league);
   const twoYear = (state.league==='nba'||state.league==='ncaam');
   const latest = state.league==='nfl' ? 2025 : 2026;
   let yearOpts = '';
@@ -630,16 +740,28 @@ function renderAttendance(){
   const builder = canBuild ? `
     <h2 class="section" style="font-size:20px;margin-top:26px">Any Season, Every Team \u2014 Built From Real Game Data</h2>
     <div class="rule"></div>
-    <div class="section-sub">${state.league==='ncaam'
-      ? 'Pick a season and the site pulls real home-game crowds for 30 of the nation\u2019s biggest home draws \u2014 arena, capacity, average, total, and how full the building was. Every other program\u2019s numbers are in its team profile under Teams &amp; Rosters.'
-      : 'Pick a season and the site pulls every team\u2019s actual home game crowds from the official data feed \u2014 arena, capacity, average, total, and how full the building was.'}</div>
+    <div class="section-sub">Pick a season and the site pulls every team's actual home game crowds from the official data feed \u2014 arena, capacity, average, total, and how full the building was.</div>
     <div class="controls">
       <select id="liveYear">${yearOpts}</select>
       <button class="build-btn" id="buildBtn">\u26A1 Build Table</button>
     </div>
     <div id="liveProgress" class="progress" style="display:none"></div>
     <div id="liveTableWrap"></div>` : `
-    <p class="footnote" style="margin-top:20px"><strong>Want more teams or past seasons?</strong> Open any program under Teams & Rosters \u2014 every team profile has a full game-by-game attendance log for any season, computed live from real game data.</p>`;
+    <h2 class="section" style="font-size:20px;margin-top:26px">The 100 Biggest Buildings in College Basketball</h2>
+    <div class="rule"></div>
+    <div class="section-sub">Ranked by seating capacity. Pick a conference to re-rank within it, or click any column header to sort.</div>
+    <div class="controls">
+      <select id="confFilter"><option value="">All conferences</option>${[...new Set(NCAA_ARENAS.map(a=>a[2]))].sort().map(c=>`<option>${esc(c)}</option>`).join('')}</select>
+    </div>
+    <div class="table-scroll"><table id="arenaTable" style="min-width:660px">
+      <thead><tr><th></th>
+        <th class="sortable" data-col="1">School</th>
+        <th class="sortable" data-col="2">Arena</th>
+        <th class="sortable" data-col="3">Conference</th>
+        <th class="sortable num" data-col="4">Capacity</th>
+      </tr></thead>
+      <tbody id="arenaBody"></tbody></table></div>
+    <p class="footnote">Capacities are current listed basketball configurations and shift slightly with renovations and curtained setups \u2014 Rupp Arena, for example, came down from 23,000+ to 20,500 after its remodel, and shared NBA/NHL buildings (Madison Square Garden, Capital One Arena, Prudential Center, Fiserv Forum) are listed at their basketball setups. Syracuse's dome holds the NCAA on-campus attendance record of 35,642, set in 2019. Conference labels reflect the current alignment. For any school's crowds \u2014 game by game, season by season \u2014 open its profile under Teams &amp; Rosters.</p>`;
 
   setMain(`
     ${header(`${L.label} Attendance & Tickets`, `${D.season} <span class="pill">Verified data</span>`)}
@@ -654,8 +776,99 @@ function renderAttendance(){
     ${builder}
   `);
   makeSortable(document.getElementById('curatedAtt'));
+  const at = document.getElementById('arenaTable');
+  if(at){
+    const sorted100 = NCAA_ARENAS.slice().sort((a,b)=>b[3]-a[3]).slice(0,100);
+    const drawArenas = flt => document.getElementById('arenaBody').innerHTML =
+      sorted100.filter(a=>!flt || a[2]===flt).map((a,i)=>`
+        <tr><td class="rank">${i+1}</td>
+          <td style="font-weight:600">${esc(a[0])}</td>
+          <td>${esc(a[1])}</td>
+          <td>${esc(a[2])}</td>
+          <td class="num" data-v="${a[3]}">${fmt(a[3])}</td></tr>`).join('');
+    drawArenas('');
+    makeSortable(at);
+    document.getElementById('confFilter').addEventListener('change', e=>drawArenas(e.target.value));
+  }
   const btn = document.getElementById('buildBtn');
   if(btn) btn.addEventListener('click', buildLiveLeagueTable);
+}
+
+/* ---- Top 100 college arenas, built live, cached on the visitor's device ---- */
+async function buildArena100(){
+  const btn = document.getElementById('arena100Btn');
+  const prog = document.getElementById('arena100Progress');
+  const wrap = document.getElementById('arena100Wrap');
+  const CKEY = 'ss_arena100_v1';
+  const draw = rows => {
+    const confs = [...new Set(rows.map(r=>r.conf).filter(c=>c&&c!=='\u2014'))].sort();
+    const confSel = `<div class="controls">
+      <select id="confFilter"><option value="">All conferences</option>${confs.map(c=>`<option>${esc(c)}</option>`).join('')}</select>
+    </div>`;
+    const tbody = flt => rows
+      .filter(r=>!flt || r.conf===flt)
+      .map((r,i)=>`<tr><td class="rank">${i+1}</td>
+        <td><span class="teamcell">${r.logo?`<img src="${esc(r.logo)}" alt="">`:''}<span>${esc(r.school)}</span></span></td>
+        <td style="font-weight:600">${esc(r.arena||'\u2014')}</td>
+        <td>${esc(r.conf||'\u2014')}</td>
+        <td class="num" data-v="${r.cap}">${fmt(r.cap)}</td></tr>`).join('');
+    wrap.innerHTML = `${confSel}
+      <div class="table-scroll"><table id="arena100Table" style="min-width:680px">
+        <thead><tr><th></th>
+          <th class="sortable" data-col="1">School</th>
+          <th class="sortable" data-col="2">Arena</th>
+          <th class="sortable" data-col="3">Conference</th>
+          <th class="sortable num" data-col="4">Capacity</th></tr></thead>
+        <tbody id="arena100Body">${tbody('')}</tbody></table></div>
+      <p class="footnote">Built live from the official data feed \u2014 arena names, capacities, and conferences update themselves as schools renovate, rename buildings, or change leagues. Ranked by capacity; pick a conference to re-rank within it, or click any column to sort. Saved on this device \u2014 loads instantly next visit.</p>`;
+    makeSortable(document.getElementById('arena100Table'));
+    document.getElementById('confFilter').addEventListener('change', e=>{
+      document.getElementById('arena100Body').innerHTML = tbody(e.target.value);
+    });
+  };
+  // Cached from a previous visit? Instant.
+  try{
+    const raw = localStorage.getItem(CKEY);
+    if(raw){ const p = JSON.parse(raw);
+      if(Date.now()-p.t < 45*86400000 && p.rows?.length){ draw(p.rows); return; } }
+  }catch(e){}
+  btn.disabled = true; prog.style.display='block';
+  prog.textContent = 'Loading conference map\u2026';
+  try{
+    // Conference for each team, from the standings feed (one call)
+    const confOf = {};
+    try{
+      const st = await getJSON(API_V2('ncaam')+'/standings');
+      (st.children||[]).forEach(g=>{
+        const name = g.shortName || g.name || g.abbreviation || '';
+        (g.standings?.entries||[]).forEach(e=>{ if(e.team?.id) confOf[e.team.id] = name; });
+      });
+    }catch(e){}
+    const tj = await getJSON(API('ncaam')+'/teams?region=us&limit=500&groups=50');
+    const teams = (tj.sports?.[0]?.leagues?.[0]?.teams || []).map(t=>t.team).filter(Boolean);
+    const rows = [];
+    let done = 0;
+    await inChunks(teams, 6, async t=>{
+      try{
+        const d = await getJSON(API('ncaam')+`/teams/${t.id}`);
+        const v = d.team?.franchise?.venue || d.team?.venue;
+        const cap = v?.capacity ? Number(v.capacity) : null;
+        if(cap && cap > 0){
+          rows.push({ school:t.displayName, logo:t.logos?.[0]?.href||'', arena:v.fullName||'', cap, conf: confOf[t.id]||'\u2014' });
+        }
+      }catch(e){}
+      done++;
+      if(done % 12 === 0 || done===teams.length)
+        prog.textContent = `Checking every D-I arena\u2026 ${done} of ${teams.length} schools`;
+    });
+    rows.sort((a,b)=>b.cap-a.cap);
+    const top = rows.slice(0,100);
+    try{ localStorage.setItem(CKEY, JSON.stringify({t:Date.now(), rows:top})); }catch(e){}
+    draw(top);
+  }catch(err){
+    wrap.insertAdjacentHTML('afterbegin','<div class="error">Couldn\u2019t finish the arena crunch \u2014 try again in a minute.</div>');
+  }
+  prog.style.display='none'; btn.disabled=false;
 }
 
 async function buildLiveLeagueTable(){

@@ -37,7 +37,7 @@ header{border-bottom:3px solid var(--ink);background:var(--paper)}
 .tagline{font-size:13px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
 
 /* League tabs — the "section sign" strip */
-.league-tabs{display:grid;grid-template-columns:repeat(4,1fr);border:2px solid var(--ink);border-bottom:none}
+.league-tabs{display:grid;grid-template-columns:repeat(5,1fr);border:2px solid var(--ink);border-bottom:none}
 .league-tab{
   appearance:none;border:none;background:var(--card);cursor:pointer;
   font-family:'Barlow Condensed';font-weight:700;text-transform:uppercase;
@@ -90,6 +90,8 @@ td.num,th.num{text-align:right}
 td.rank{color:var(--muted);width:36px}
 .teamcell{display:flex;align-items:center;gap:10px;font-weight:600}
 .teamcell img{width:24px;height:24px;object-fit:contain;flex:none}
+.team-link{cursor:pointer}
+.team-link:hover span{color:var(--accent);text-decoration:underline}
 tbody tr:hover{background:#FBFAF6}
 
 .footnote{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.6}
@@ -198,6 +200,8 @@ footer strong{color:var(--ink)}
   <div class="loading">Loading&hellip;</div>
 </main>
 
+<div id="rosterMount"></div>
+
 <footer>
   <div class="wrap">
     <strong>About the data.</strong> Standings, scores, team records, rosters, and league leaders load live from ESPN&rsquo;s public data feed, which is compiled from official league stat sheets, and update automatically. Attendance figures come from official league / ESPN attendance reports for the season noted on each table. Ticket price figures are cited to their source (leagues do not publish official average ticket prices; the most-used industry sources are the Team Marketing Report Fan Cost Index and league gate reports). SportsStats.org is an independent reference site and is not affiliated with the NBA, WNBA, NCAA, or NFL.
@@ -210,6 +214,7 @@ const LEAGUES = {
   nba:  { label:'NBA',  sub:'Pro Basketball',      sport:'basketball', slug:'nba',                     accent:'#C8102E' },
   wnba: { label:'WNBA', sub:"Women's Pro Hoops",   sport:'basketball', slug:'wnba',                    accent:'#E56020' },
   ncaam:{ label:'NCAA MBB', sub:"Men's College",   sport:'basketball', slug:'mens-college-basketball', accent:'#1D4F91' },
+  ncaaf:{ label:'NCAA FB', sub:'College Football',  sport:'football',   slug:'college-football',        accent:'#154734' },
   nfl:  { label:'NFL',  sub:'Pro Football',        sport:'football',   slug:'nfl',                     accent:'#013369' }
 };
 const VIEWS = [
@@ -313,6 +318,21 @@ ncaam: {
   rowNote: 'The full NCAA top-50 table (per-school averages) will be added next \u2014 attendance is self-reported to the NCAA on a tickets-sold basis, so some arenas report over 100% of capacity.'
 },
 
+ncaaf: {
+  season: '2025 season',
+  source: 'Per-game crowds come from each game\u2019s official box score \u2014 open any team under Teams & Rosters for its full game-by-game log, any season.',
+  ticketNote: 'College ticket pricing varies by school, opponent, and seat; no league-wide average is published.',
+  highlights: [
+    { big:'107,601', lbl:'Michigan Stadium capacity', note:'The Big House \u2014 largest stadium in the U.S. and third-largest sports venue on Earth' },
+    { big:'110,648', lbl:'Michigan\u2019s 2025 opener crowd', note:'The nation\u2019s biggest \u2014 the Wolverines lead FBS attendance year after year' },
+    { big:'300+', lbl:'Straight 100,000+ crowds', note:'Every Michigan home game has topped 100K since 1975 (excluding 2020)' },
+    { big:'8', lbl:'Stadiums seating 100,000+', note:'Michigan, Penn State, Ohio State, Texas A&M, LSU, Tennessee, Texas, Alabama' }
+  ],
+  cols: ['Team','Avg Home','Total Home','Home Gms','Avg Ticket'],
+  rows: [],
+  rowNote: ''
+},
+
 nba: {
   season: '2025\u201326 season',
   source: 'Official NBA attendance report (regular season).',
@@ -352,7 +372,7 @@ nba: {
    Counts current through July 2026. conf = conference titles (to be
    verified in a later pass \u2014 shown as "\u2014" until filled).
 ================================================ */
-const TITLE_LABEL = { nba:'NBA Championships', wnba:'WNBA Championships', nfl:'Super Bowl Wins', ncaam:'National Titles' };
+const TITLE_LABEL = { nba:'NBA Championships', wnba:'WNBA Championships', nfl:'Super Bowl Wins', ncaam:'National Titles', ncaaf:'National Titles' };
 const TEAM_FACTS = {
 nba: {
 "Atlanta Hawks":{t:1,o:"Began as the Tri-Cities Blackhawks, named for Sauk leader Chief Black Hawk; shortened to Hawks on the move to Milwaukee."},
@@ -547,6 +567,34 @@ const NCAA_ARENAS = [
 ["Charlotte","Dale F. Halton Arena","American",9105]
 ];
 
+const NCAAF_STADIUMS = [
+["Michigan","Michigan Stadium (The Big House)","Big Ten",107601],
+["Penn State","Beaver Stadium","Big Ten",106572],
+["Ohio State","Ohio Stadium (The Horseshoe)","Big Ten",102780],
+["Texas A&M","Kyle Field","SEC",102733],
+["LSU","Tiger Stadium (Death Valley)","SEC",102321],
+["Tennessee","Neyland Stadium","SEC",101915],
+["Texas","Darrell K Royal\u2013Texas Memorial Stadium","SEC",100119],
+["Alabama","Bryant\u2013Denny Stadium","SEC",100077],
+["Georgia","Sanford Stadium","SEC",92746],
+["UCLA","Rose Bowl","Big Ten",88565],
+["Florida","Ben Hill Griffin Stadium (The Swamp)","SEC",88548],
+["Auburn","Jordan\u2013Hare Stadium","SEC",88043],
+["Nebraska","Memorial Stadium","Big Ten",85458],
+["Clemson","Memorial Stadium (Death Valley)","ACC",81500],
+["Oklahoma","Gaylord Family Oklahoma Memorial Stadium","SEC",80126],
+["Florida State","Doak Campbell Stadium","ACC",79560],
+["Notre Dame","Notre Dame Stadium","Independent",77622],
+["South Carolina","Williams\u2013Brice Stadium","SEC",77559],
+["USC","Los Angeles Memorial Coliseum","Big Ten",77500],
+["Arkansas","Donald W. Reynolds Razorback Stadium","SEC",76212],
+["Wisconsin","Camp Randall Stadium","Big Ten",75822],
+["Michigan State","Spartan Stadium","Big Ten",75005],
+["Washington","Husky Stadium","Big Ten",70138],
+["Iowa","Kinnick Stadium","Big Ten",69250],
+["Virginia Tech","Lane Stadium","ACC",65632]
+];
+
 /* ================= STATE ================= */
 let state = { league:'nba', view:'attendance', season:'' };
 const cache = {};
@@ -695,7 +743,7 @@ function logoImg(team, size){
    year); NFL/WNBA are single-year seasons. Goes back 15 years. */
 function seasonOptions(){
   const twoYear = (state.league==='nba' || state.league==='ncaam');
-  const latest = twoYear ? 2026 : (state.league==='nfl' ? 2025 : 2026);
+  const latest = twoYear ? 2026 : ((state.league==='nfl'||state.league==='ncaaf') ? 2025 : 2026);
   let opts = `<option value="">Current season</option>`;
   for(let y=latest; y>=latest-15; y--){
     const label = twoYear ? `${y-1}\u2013${String(y).slice(2)}` : String(y);
@@ -731,7 +779,7 @@ function renderAttendance(){
   // Live builder available where a full league crunch is practical
   const canBuild = ['wnba','nba','nfl'].includes(state.league);
   const twoYear = (state.league==='nba'||state.league==='ncaam');
-  const latest = state.league==='nfl' ? 2025 : 2026;
+  const latest = (state.league==='nfl'||state.league==='ncaaf') ? 2025 : 2026;
   let yearOpts = '';
   for(let y=latest; y>=latest-11; y--){
     const label = twoYear ? `${y-1}\u2013${String(y).slice(2)}` : String(y);
@@ -747,38 +795,39 @@ function renderAttendance(){
     </div>
     <div id="liveProgress" class="progress" style="display:none"></div>
     <div id="liveTableWrap"></div>` : `
-    <h2 class="section" style="font-size:20px;margin-top:26px">The 100 Biggest Buildings in College Basketball</h2>
+    <h2 class="section" style="font-size:20px;margin-top:26px">${state.league==='ncaaf'?'The 25 Biggest Stadiums in College Football':'The 100 Biggest Buildings in College Basketball'}</h2>
     <div class="rule"></div>
     <div class="section-sub">Ranked by seating capacity. Pick a conference to re-rank within it, or click any column header to sort.</div>
     <div class="controls">
-      <select id="confFilter"><option value="">All conferences</option>${[...new Set(NCAA_ARENAS.map(a=>a[2]))].sort().map(c=>`<option>${esc(c)}</option>`).join('')}</select>
+      <select id="confFilter"><option value="">All conferences</option>${[...new Set((state.league==='ncaaf'?NCAAF_STADIUMS:NCAA_ARENAS).map(a=>a[2]))].sort().map(c=>`<option>${esc(c)}</option>`).join('')}</select>
     </div>
     <div class="table-scroll"><table id="arenaTable" style="min-width:660px">
       <thead><tr><th></th>
         <th class="sortable" data-col="1">School</th>
-        <th class="sortable" data-col="2">Arena</th>
+        <th class="sortable" data-col="2">${state.league==='ncaaf'?'Stadium':'Arena'}</th>
         <th class="sortable" data-col="3">Conference</th>
         <th class="sortable num" data-col="4">Capacity</th>
       </tr></thead>
       <tbody id="arenaBody"></tbody></table></div>
-    <p class="footnote">Capacities are current listed basketball configurations and shift slightly with renovations and curtained setups \u2014 Rupp Arena, for example, came down from 23,000+ to 20,500 after its remodel, and shared NBA/NHL buildings (Madison Square Garden, Capital One Arena, Prudential Center, Fiserv Forum) are listed at their basketball setups. Syracuse's dome holds the NCAA on-campus attendance record of 35,642, set in 2019. Conference labels reflect the current alignment. For any school's crowds \u2014 game by game, season by season \u2014 open its profile under Teams &amp; Rosters.</p>`;
+    <p class="footnote">${state.league==='ncaaf'?`Capacities are current listed configurations and can shift with renovations \u2014 Michigan has packed in well over 113,000 for its biggest games. For any team's actual crowds \u2014 game by game, season by season \u2014 open its profile under Teams &amp; Rosters.`:`Capacities are current listed basketball configurations and shift slightly with renovations and curtained setups \u2014 Rupp Arena, for example, came down from 23,000+ to 20,500 after its remodel, and shared NBA/NHL buildings (Madison Square Garden, Capital One Arena, Prudential Center, Fiserv Forum) are listed at their basketball setups. Syracuse's dome holds the NCAA on-campus attendance record of 35,642, set in 2019. Conference labels reflect the current alignment. For any school's crowds \u2014 game by game, season by season \u2014 open its profile under Teams &amp; Rosters.`}</p>`;
 
   setMain(`
     ${header(`${L.label} Attendance & Tickets`, `${D.season} <span class="pill">Verified data</span>`)}
     <div class="cards">${cards}</div>
-    <div class="table-scroll"><table id="curatedAtt">
+    ${D.rows.length?`<div class="table-scroll"><table id="curatedAtt">
         <thead><tr><th></th>${head}</tr></thead>
         <tbody>${body}</tbody>
-    </table></div>
+    </table></div>`:''}
     ${D.rowNote?`<p class="footnote"><strong>Note:</strong> ${D.rowNote}</p>`:''}
     <p class="footnote"><strong>Attendance source:</strong> ${D.source}</p>
     <p class="footnote"><strong>Ticket prices:</strong> ${D.ticketNote}</p>
     ${builder}
   `);
-  makeSortable(document.getElementById('curatedAtt'));
+  const cur = document.getElementById('curatedAtt');
+  if(cur) makeSortable(cur);
   const at = document.getElementById('arenaTable');
   if(at){
-    const sorted100 = NCAA_ARENAS.slice().sort((a,b)=>b[3]-a[3]).slice(0,100);
+    const sorted100 = (state.league==='ncaaf'?NCAAF_STADIUMS:NCAA_ARENAS).slice().sort((a,b)=>b[3]-a[3]).slice(0,100);
     const drawArenas = flt => document.getElementById('arenaBody').innerHTML =
       sorted100.filter(a=>!flt || a[2]===flt).map((a,i)=>`
         <tr><td class="rank">${i+1}</td>
@@ -816,7 +865,7 @@ async function buildArena100(){
       <div class="table-scroll"><table id="arena100Table" style="min-width:680px">
         <thead><tr><th></th>
           <th class="sortable" data-col="1">School</th>
-          <th class="sortable" data-col="2">Arena</th>
+          <th class="sortable" data-col="2">${state.league==='ncaaf'?'Stadium':'Arena'}</th>
           <th class="sortable" data-col="3">Conference</th>
           <th class="sortable num" data-col="4">Capacity</th></tr></thead>
         <tbody id="arena100Body">${tbody('')}</tbody></table></div>
@@ -909,7 +958,7 @@ async function buildLiveLeagueTable(){
        (a full 360-school crunch would take too long in the browser). Any other
        program's numbers live in its team profile. */
     const BIG_DRAWS = ['Kentucky','Syracuse','North Carolina','Tennessee','Louisville','Kansas','Indiana','Wisconsin','Purdue','Michigan State','Ohio State','Illinois','Nebraska','Creighton','Arkansas','BYU','Memphis','Alabama','Iowa','Maryland','Marquette','Dayton','Texas Tech','NC State','Michigan','Duke','Auburn','Iowa State','Cincinnati','Texas'];
-    const limit = state.league==='ncaam' ? '&limit=500&groups=50' : '&limit=64';
+    const limit = state.league==='ncaam' ? '&limit=500&groups=50' : (state.league==='ncaaf' ? '&limit=500&groups=80' : '&limit=64');
     const tj = await getJSON(API(state.league)+'/teams?region=us'+limit);
     let teams = (tj.sports?.[0]?.leagues?.[0]?.teams || []).map(t=>t.team).filter(Boolean);
     if(state.league==='ncaam'){
@@ -947,10 +996,10 @@ async function renderStandings(){
     const j = await getJSON(API_V2(state.league)+'/standings'+seasonParam());
     const groups = j.children?.length ? j.children : (j.standings ? [j] : []);
     if(!groups.length) throw new Error('No standings data');
-    let html = header(`${L.label} Standings`, `Live from official league data <span class="pill">Auto-updating</span>`) + seasonOptions();
+    let html = header(`${L.label} Standings`, `Live from official league data \u2014 click any team for its full profile, schedule & crowd log <span class="pill">Auto-updating</span>`) + seasonOptions();
     // For college, offer a conference selector
     let shown = groups;
-    if(state.league==='ncaam' && groups.length>4){
+    if((state.league==='ncaam'||state.league==='ncaaf') && groups.length>4){
       const sel = groups.map((g,i)=>`<option value="${i}">${esc(g.name||g.abbreviation||('Group '+(i+1)))}</option>`).join('');
       html += `<div class="controls"><select id="confSel" aria-label="Conference">${sel}</select></div><div id="standWrap"></div>`;
       setMain(html);
@@ -973,7 +1022,7 @@ function standingsTable(group){
   const rows = entries.map((e,i)=>`
     <tr>
       <td class="rank">${i+1}</td>
-      <td><span class="teamcell">${logoImg(e.team)}<span>${esc(e.team?.displayName||e.team?.name||'')}</span></span></td>
+      <td><span class="teamcell team-link" role="button" tabindex="0" data-tid="${esc(e.team?.id??'')}" data-tname="${esc(e.team?.displayName||e.team?.name||'')}" data-tlogo="${esc(e.team?.logos?.[0]?.href||'')}">${logoImg(e.team)}<span>${esc(e.team?.displayName||e.team?.name||'')}</span></span></td>
       <td class="num" data-v="${stat(e,['wins'])}">${stat(e,['wins'])}</td>
       <td class="num" data-v="${stat(e,['losses'])}">${stat(e,['losses'])}</td>
       <td class="num" data-v="${stat(e,['winPercent','winpercent'])}">${stat(e,['winPercent','winpercent'])}</td>
@@ -997,7 +1046,15 @@ function standingsTable(group){
       <tbody>${rows}</tbody>
     </table></div>`;
 }
-function wireStandingsSort(){ document.querySelectorAll('table[id^="st"]').forEach(makeSortable); }
+function wireStandingsSort(){
+  document.querySelectorAll('table[id^="st"]').forEach(makeSortable);
+  document.querySelectorAll('.team-link').forEach(el=>{
+    if(el.dataset.wired) return; el.dataset.wired = '1';
+    const open = ()=> el.dataset.tid && openRoster({ id: el.dataset.tid, displayName: el.dataset.tname, logos: el.dataset.tlogo?[{href:el.dataset.tlogo}]:[] });
+    el.addEventListener('click', open);
+    el.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); } });
+  });
+}
 
 /* ================= RENDER: LEADERS ================= */
 async function renderLeaders(){
@@ -1055,17 +1112,16 @@ async function renderTeams(){
   const L = LEAGUES[state.league];
   loadingMain('Loading teams\u2026');
   try{
-    const limit = state.league==='ncaam' ? '&limit=500&groups=50' : '&limit=64';
+    const limit = state.league==='ncaam' ? '&limit=500&groups=50' : (state.league==='ncaaf' ? '&limit=500&groups=80' : '&limit=64');
     const j = await getJSON(API(state.league)+'/teams?region=us'+limit);
     const teams = (j.sports?.[0]?.leagues?.[0]?.teams || []).map(t=>t.team).filter(Boolean);
     teams.sort((a,b)=>(a.displayName||'').localeCompare(b.displayName||''));
-    const search = state.league==='ncaam'
-      ? `<div class="controls"><input id="teamSearch" type="search" placeholder="Search ${teams.length} Division I programs\u2026" aria-label="Search teams"></div>` : '';
+    const search = (state.league==='ncaam'||state.league==='ncaaf')
+      ? `<div class="controls"><input id="teamSearch" type="search" placeholder="Search ${teams.length} programs\u2026" aria-label="Search teams"></div>` : '';
     setMain(`
       ${header(`${L.label} Teams`, `Tap a team to open its current roster <span class="pill">Live</span>`)}
       ${search}
       <div class="team-grid" id="teamGrid"></div>
-      <div id="rosterMount"></div>
     `);
     const grid = document.getElementById('teamGrid');
     const draw = list => {
@@ -1230,14 +1286,9 @@ async function openRoster(team){
         <tbody>${rows}</tbody></table></div>`;
     }
   }
-  html += `<div style="padding:14px 16px 16px">
-    <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:6px">Current Roster</div>
-    ${rosterHTML}
-  </div>`;
-
   /* ---- Game-by-game attendance log ---- */
   const twoYear = (state.league==='nba'||state.league==='ncaam');
-  const latestSeason = state.league==='nfl' ? 2025 : 2026;
+  const latestSeason = (state.league==='nfl'||state.league==='ncaaf') ? 2025 : 2026;
   let logYears = '';
   for(let y=latestSeason; y>=latestSeason-11; y--){
     logYears += `<option value="${y}">${twoYear?`${y-1}\u2013${String(y).slice(2)}`:y}</option>`;
@@ -1250,6 +1301,11 @@ async function openRoster(team){
     </div>
     <div id="logStats"></div>
     <div id="logWrap"><div class="progress">Pulling the season's games\u2026</div></div>
+  </div>`;
+
+  html += `<div style="padding:14px 16px 16px">
+    <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:6px">Current Roster</div>
+    ${rosterHTML}
   </div>`;
 
   body.innerHTML = html;

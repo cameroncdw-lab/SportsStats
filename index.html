@@ -218,6 +218,22 @@ th.sortable::after{content:' \21C5';opacity:.4}
   background:var(--accent);color:var(--accent-ink);border:2px solid var(--ink);padding:10px 20px}
 .build-btn:hover{filter:brightness(.88)}
 .build-btn:disabled{opacity:.5;cursor:wait}
+.att-sort{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.att-sort .sortbtn{appearance:none;cursor:pointer;font-family:'Barlow';font-weight:600;font-size:12px;letter-spacing:.05em;text-transform:uppercase;background:var(--card);border:2px solid var(--ink);padding:7px 12px;color:var(--ink)}
+.att-sort .sortbtn.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.att-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.att-card{background:var(--card);border:2px solid var(--ink);padding:0;cursor:pointer;overflow:hidden;transition:transform .12s}
+.att-card:hover{transform:translateY(-3px)}
+.att-card:focus-visible{outline:3px solid var(--accent)}
+.att-card .ac-head{display:flex;align-items:center;gap:11px;padding:12px 14px 10px;border-bottom:2px solid var(--ink)}
+.att-card .ac-head img{width:40px;height:40px;object-fit:contain;flex:none}
+.att-card .ac-head .ac-name{font-family:'Barlow Condensed';font-weight:700;font-size:18px;line-height:1.05;text-transform:uppercase}
+.att-card .ac-head .ac-rank{margin-left:auto;font-family:'Barlow Condensed';font-weight:700;font-size:22px;color:var(--muted)}
+.att-card .ac-arena{padding:6px 14px 0;font-size:12px;color:var(--muted);font-weight:600}
+.att-card .ac-stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;padding:10px 14px 12px}
+.att-card .ac-stat .v{font-family:'Barlow Condensed';font-weight:700;font-size:24px;line-height:1;font-variant-numeric:tabular-nums}
+.att-card .ac-stat .k{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.att-card .ac-fill{grid-column:1/-1;margin-top:6px}
 .panel-section{padding:14px 16px 0}
 .panel-section .lbl-sm{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:6px}
 
@@ -270,7 +286,7 @@ const LEAGUES = {
   nfl:  { label:'NFL',  sub:'Pro Football',        sport:'football',   slug:'nfl',                     accent:'#013369' }
 };
 const VIEWS = [
-  { id:'attendance', label:'Attendance & Tickets' },
+  { id:'attendance', label:'Attendance' },
   { id:'standings',  label:'Standings' },
   { id:'leaders',    label:'Stat Leaders' },
   { id:'teams',      label:'Teams & Rosters' },
@@ -420,6 +436,28 @@ nba: {
 };
 
 
+
+/* College national championships (well-documented programs; others show \u2014).
+   MBB = NCAA tournament titles; FB = claimed/recognized national titles (widely cited). */
+const COLLEGE_TITLES = {
+ncaam: {
+"UConn":6,"UCLA":11,"Kentucky":8,"North Carolina":6,"Duke":5,"Indiana":5,"Kansas":4,
+"Villanova":3,"Louisville":3,"Cincinnati":2,"Florida":3,"Michigan State":2,"Michigan":1,
+"North Carolina State":2,"NC State":2,"Oklahoma State":2,"San Francisco":2,"Arkansas":1,
+"Marquette":1,"Georgetown":1,"Syracuse":1,"Maryland":1,"Arizona":1,"UNLV":1,"Baylor":1,
+"Virginia":1,"Wisconsin":1,"Ohio State":1,"California":1,"Stanford":1,"Utah":1,"Texas Western":1,
+"Loyola Chicago":1,"CCNY":1,"Holy Cross":1,"La Salle":1,"Wyoming":1,"Oregon":1,"Seton Hall":0
+},
+ncaaf: {
+"Alabama":18,"Notre Dame":11,"Ohio State":9,"Oklahoma":7,"USC":11,"Michigan":11,"Georgia":4,
+"Nebraska":5,"Texas":4,"Miami":5,"Tennessee":6,"LSU":4,"Florida State":3,"Florida":3,
+"Penn State":2,"Auburn":2,"Clemson":3,"Minnesota":7,"Pittsburgh":9,"Michigan State":6,
+"Army":5,"Texas A&M":3,"Georgia Tech":4,"TCU":2,"Ole Miss":3,"Washington":2,"Michigan Wolverines":11,
+"Yale":27,"Princeton":28,"Harvard":9,"California":5,"Stanford":2,"Colorado":1,"Maryland":1,
+"Syracuse":1,"Michigan State Spartans":6,"BYU":1,"Wisconsin":0,"Oregon":0
+}
+};
+
 /* ================= FRANCHISE HISTORY =================
    f = founding year; cities = chronological homes (for the relocation animation).
    Single-city franchises have a one-item list (no plane shown).
@@ -497,6 +535,8 @@ wnba: {
 "Connecticut Sun":{f:1999,cities:["Orlando","Uncasville (Connecticut)"]},
 "Dallas Wings":{f:1998,cities:["Detroit","Tulsa","Dallas (Arlington)"]},
 "Golden State Valkyries":{f:2025,cities:["San Francisco"]},
+"Portland Fire":{f:2026,cities:["Portland"]},
+"Toronto Tempo":{f:2026,cities:["Toronto"]},
 "Indiana Fever":{f:2000,cities:["Indianapolis"]},
 "Las Vegas Aces":{f:1997,cities:["Salt Lake City (Utah)","San Antonio","Las Vegas"]},
 "Los Angeles Sparks":{f:1997,cities:["Los Angeles"]},
@@ -513,6 +553,17 @@ wnba: {
    Counts current through July 2026. conf = conference titles (to be
    verified in a later pass \u2014 shown as "\u2014" until filled).
 ================================================ */
+function titlesFor(teamName){
+  if(state.league==='ncaam'||state.league==='ncaaf'){
+    const map = COLLEGE_TITLES[state.league] || {};
+    // try exact, then location-style match
+    if(map[teamName]!=null) return map[teamName];
+    const key = Object.keys(map).find(k => teamName.includes(k) || k.includes(teamName));
+    return key!=null ? map[key] : null;
+  }
+  const f = TEAM_FACTS[state.league]?.[teamName];
+  return f ? f.t : null;
+}
 const TITLE_LABEL = { nba:'NBA Championships', wnba:'WNBA Championships', nfl:'Super Bowl Wins', ncaam:'National Titles', ncaaf:'National Titles' };
 const TEAM_FACTS = {
 nba: {
@@ -553,6 +604,8 @@ wnba: {
 "Connecticut Sun":{t:0,o:"Owned by the Mohegan Tribe and named for the Mohegan Sun resort where they play."},
 "Dallas Wings":{t:3,o:"The franchise won 3 titles as the Detroit Shock; the Wings name and Pegasus logo honor the flying red horse atop Dallas's Magnolia Building."},
 "Golden State Valkyries":{t:0,o:"From Norse mythology \u2014 warrior women who decided the fates of battle. The 2025 expansion team sold out every home game in year one."},
+"Portland Fire":{t:0,o:"A revival of the original Portland Fire (2000\u20132002); the name evokes energy and intensity, pairing with the NBA Trail Blazers in the Rose City. Debuted as an expansion team in 2026."},
+"Toronto Tempo":{t:0,o:"The WNBA\u2019s first Canadian team, debuting in 2026. \u2018Tempo\u2019 nods to pace and rhythm \u2014 in music and in basketball \u2014 and to Toronto\u2019s cultural energy."},
 "Indiana Fever":{t:1,o:"Plays on 'basketball fever' in basketball-mad Indiana; champions in 2012."},
 "Las Vegas Aces":{t:3,o:"Renamed for the top card in the deck after relocating to Las Vegas; titles in 2022, 2023, and 2025."},
 "Los Angeles Sparks":{t:3,o:"An original 1997 franchise \u2014 the name evokes the spark that ignites LA."},
@@ -1124,73 +1177,38 @@ const seasonParam = () => state.season ? `?season=${state.season}` : '';
 const liveAttCache = {};
 function renderAttendance(){
   const L = LEAGUES[state.league];
-  const D = ATTENDANCE[state.league];
-  const cards = D.highlights.map(h=>
-    `<div class="stat-card"><div class="big">${h.big}</div><div class="lbl">${h.lbl}</div><div class="note">${h.note}</div></div>`).join('');
-  const head = D.cols.map((c,i)=>`<th class="sortable ${i>0?'num':''}" data-col="${i+1}">${c}</th>`).join('');
-  const sorted = D.rows.slice().sort((a,b)=>(b[1]||0)-(a[1]||0));
-  const body = sorted.map((r,i)=>`
-    <tr>
-      <td class="rank">${i+1}</td>
-      <td style="font-weight:600">${esc(r[0])}</td>
-      <td class="num" data-v="${r[1]??''}">${fmt(r[1])}</td>
-      <td class="num" data-v="${r[2]??''}">${fmt(r[2])}</td>
-      <td class="num" data-v="${r[3]??''}">${fmt(r[3])}</td>
-      <td class="num" data-v="${r[4]??''}">${money(r[4])}</td>
-    </tr>`).join('');
-
-  // Live builder available where a full league crunch is practical
-  const canBuild = ['wnba','nba','nfl'].includes(state.league);
+  const isCollege = (state.league==='ncaam'||state.league==='ncaaf');
   const twoYear = (state.league==='nba'||state.league==='ncaam');
   const latest = (state.league==='nfl'||state.league==='ncaaf') ? 2025 : 2026;
   let yearOpts = '';
   for(let y=latest; y>=latest-11; y--){
     const label = twoYear ? `${y-1}\u2013${String(y).slice(2)}` : String(y);
-    yearOpts += `<option value="${y}">${label}${(state.league==='wnba'&&y===2026)?' (in progress)':''}</option>`;
+    yearOpts += `<option value="${y}">${label}</option>`;
   }
-  const builder = canBuild ? `
-    <h2 class="section" style="font-size:20px;margin-top:26px">Any Season, Every Team \u2014 Built From Real Game Data</h2>
-    <div class="rule"></div>
-    <div class="section-sub">Pick a season and the site pulls every team's actual home game crowds from the official data feed \u2014 arena, capacity, average, total, and how full the building was.</div>
-    <div class="controls">
-      <select id="liveYear">${yearOpts}</select>
-      <button class="build-btn" id="buildBtn">\u26A1 Build Table</button>
-    </div>
-    <div id="liveProgress" class="progress" style="display:none"></div>
-    <div id="liveTableWrap"></div>` : `
-    <h2 class="section" style="font-size:20px;margin-top:26px">${state.league==='ncaaf'?'The 100 Biggest Stadiums in College Football':'The 100 Biggest Arenas in College Basketball'}</h2>
-    <div class="rule"></div>
-    <div class="section-sub">Ranked by seating capacity. Pick a conference to re-rank within it, or click any column header to sort.</div>
-    <div class="controls">
-      <select id="confFilter"><option value="">All conferences</option>${[...new Set((state.league==='ncaaf'?NCAAF_STADIUMS:NCAA_ARENAS).map(a=>a[2]))].sort().map(c=>`<option>${esc(c)}</option>`).join('')}</select>
-    </div>
-    <div class="table-scroll"><table id="arenaTable" style="min-width:660px">
-      <thead><tr><th></th>
-        <th class="sortable" data-col="1">School</th>
-        <th class="sortable" data-col="2">${state.league==='ncaaf'?'Stadium':'Arena'}</th>
-        <th class="sortable" data-col="3">Conference</th>
-        <th class="sortable num" data-col="4">Capacity</th>
-      </tr></thead>
-      <tbody id="arenaBody"></tbody></table></div>
-    <p class="footnote">${state.league==='ncaaf'?`Capacities are current listed configurations and can shift with renovations \u2014 Michigan has packed in well over 113,000 for its biggest games. For any team's actual crowds \u2014 game by game, season by season \u2014 open its profile under Teams &amp; Rosters.`:`Capacities are current listed basketball configurations and shift slightly with renovations and curtained setups \u2014 Rupp Arena, for example, came down from 23,000+ to 20,500 after its remodel, and shared NBA/NHL buildings (Madison Square Garden, Capital One Arena, Prudential Center, Fiserv Forum) are listed at their basketball setups. Syracuse's dome holds the NCAA on-campus attendance record of 35,642, set in 2019. Conference labels reflect the current alignment. For any school's crowds \u2014 game by game, season by season \u2014 open its profile under Teams &amp; Rosters.`}</p>`;
 
-  setMain(`
-    ${header(`${L.label} Attendance & Tickets`, `${D.season} <span class="pill">Verified data</span>`)}
-    <div class="cards">${cards}</div>
-    ${D.rows.length?`<div class="table-scroll"><table id="curatedAtt">
-        <thead><tr><th></th>${head}</tr></thead>
-        <tbody>${body}</tbody>
-    </table></div>`:''}
-    ${D.rowNote?`<p class="footnote"><strong>Note:</strong> ${D.rowNote}</p>`:''}
-    <p class="footnote"><strong>Attendance source:</strong> ${D.source}</p>
-    <p class="footnote"><strong>Ticket prices:</strong> ${D.ticketNote}</p>
-    ${builder}
-  `);
-  const cur = document.getElementById('curatedAtt');
-  if(cur) makeSortable(cur);
-  const at = document.getElementById('arenaTable');
-  if(at){
-    const sorted100 = (state.league==='ncaaf'?NCAAF_STADIUMS:NCAA_ARENAS).slice().sort((a,b)=>b[3]-a[3]).slice(0,100);
+  // College keeps the capacity-ranked arenas/stadiums table (per-game college crowds are unreliable)
+  if(isCollege){
+    const venues = state.league==='ncaaf'?NCAAF_STADIUMS:NCAA_ARENAS;
+    setMain(`
+      ${header(`${L.label} Attendance`, `Home venues, ranked by capacity`)}
+      <h2 class="section" style="font-size:20px">${state.league==='ncaaf'?'The 100 Biggest Stadiums in College Football':'The 100 Biggest Arenas in College Basketball'}</h2>
+      <div class="rule"></div>
+      <div class="section-sub">Ranked by seating capacity. Pick a conference to re-rank within it, or click any column header to sort.</div>
+      <div class="controls">
+        <select id="confFilter"><option value="">All conferences</option>${[...new Set(venues.map(a=>a[2]))].sort().map(c=>`<option>${esc(c)}</option>`).join('')}</select>
+      </div>
+      <div class="table-scroll"><table id="arenaTable" style="min-width:660px">
+        <thead><tr><th></th>
+          <th class="sortable" data-col="1">School</th>
+          <th class="sortable" data-col="2">${state.league==='ncaaf'?'Stadium':'Arena'}</th>
+          <th class="sortable" data-col="3">Conference</th>
+          <th class="sortable num" data-col="4">Capacity</th>
+        </tr></thead>
+        <tbody id="arenaBody"></tbody></table></div>
+      <p class="footnote">For any school's actual crowds \u2014 game by game, season by season, with its average attendance and % of capacity \u2014 open its profile under Teams &amp; Rosters.</p>
+    `);
+    const at = document.getElementById('arenaTable');
+    const sorted100 = venues.slice().sort((a,b)=>b[3]-a[3]).slice(0,100);
     let logoMap = {};
     const drawArenas = flt => document.getElementById('arenaBody').innerHTML =
       sorted100.filter(a=>!flt || a[2]===flt).map((a,i)=>{
@@ -1204,10 +1222,9 @@ function renderAttendance(){
     drawArenas('');
     makeSortable(at);
     document.getElementById('confFilter').addEventListener('change', e=>drawArenas(e.target.value));
-    // Fetch logos in the background, then redraw with them (name-matched to the school column)
     (async ()=>{
       try{
-        const lg = state.league==='ncaaf' ? 'ncaaf':'ncaam';
+        const lg = state.league;
         const groups = lg==='ncaaf' ? '&limit=500&groups=80' : '&limit=500&groups=50';
         const tj = await getJSON(API(lg)+'/teams?region=us'+groups);
         const teams = (tj.sports?.[0]?.leagues?.[0]?.teams || []).map(t=>t.team).filter(Boolean);
@@ -1220,154 +1237,85 @@ function renderAttendance(){
         if(document.getElementById('arenaBody')) drawArenas(cur?cur.value:'');
       }catch(e){}
     })();
+    return;
   }
-  const btn = document.getElementById('buildBtn');
-  if(btn) btn.addEventListener('click', buildLiveLeagueTable);
+
+  // Pro leagues: one clean, year-switchable attendance table, auto-built from real game data
+  setMain(`
+    ${header(`${L.label} Attendance`, `Home capacity, average attendance & total \u2014 pick any season <span class="pill">Live</span>`)}
+    <div class="controls"><select id="attYear">${yearOpts}</select></div>
+    <div id="attProgress" class="progress">Building the table from real game data\u2026</div>
+    <div id="attWrap"></div>
+  `);
+  const yearSel = document.getElementById('attYear');
+  yearSel.addEventListener('change', ()=>buildAttendanceTable(yearSel.value));
+  buildAttendanceTable(yearSel.value);
 }
 
-/* ---- Top 100 college arenas, built live, cached on the visitor's device ---- */
-async function buildArena100(){
-  const btn = document.getElementById('arena100Btn');
-  const prog = document.getElementById('arena100Progress');
-  const wrap = document.getElementById('arena100Wrap');
-  const CKEY = 'ss_arena100_v1';
+async function buildAttendanceTable(season){
+  const key = state.league+'|att|'+season;
+  const wrap = document.getElementById('attWrap');
+  const prog = document.getElementById('attProgress');
+  const forLeague = state.league;
+  let attSort = 'avg';
+  const SORTS = { avg:['avg','Avg Attendance'], total:['total','Total Home'], cap:['cap','Capacity'], games:['games','Home Games'], fill:['fill','% Full'] };
   const draw = rows => {
-    const confs = [...new Set(rows.map(r=>r.conf).filter(c=>c&&c!=='\u2014'))].sort();
-    const confSel = `<div class="controls">
-      <select id="confFilter"><option value="">All conferences</option>${confs.map(c=>`<option>${esc(c)}</option>`).join('')}</select>
-    </div>`;
-    const tbody = flt => rows
-      .filter(r=>!flt || r.conf===flt)
-      .map((r,i)=>`<tr><td class="rank">${i+1}</td>
-        <td><span class="teamcell">${r.logo?`<img src="${esc(r.logo)}" alt="">`:''}<span>${esc(r.school)}</span></span></td>
-        <td style="font-weight:600">${esc(r.arena||'\u2014')}</td>
-        <td>${esc(r.conf||'\u2014')}</td>
-        <td class="num" data-v="${r.cap}">${fmt(r.cap)}</td></tr>`).join('');
-    wrap.innerHTML = `${confSel}
-      <div class="table-scroll"><table id="arena100Table" style="min-width:680px">
-        <thead><tr><th></th>
-          <th class="sortable" data-col="1">School</th>
-          <th class="sortable" data-col="2">${state.league==='ncaaf'?'Stadium':'Arena'}</th>
-          <th class="sortable" data-col="3">Conference</th>
-          <th class="sortable num" data-col="4">Capacity</th></tr></thead>
-        <tbody id="arena100Body">${tbody('')}</tbody></table></div>
-      <p class="footnote">Built live from the official data feed \u2014 arena names, capacities, and conferences update themselves as schools renovate, rename buildings, or change leagues. Ranked by capacity; pick a conference to re-rank within it, or click any column to sort. Saved on this device \u2014 loads instantly next visit.</p>`;
-    makeSortable(document.getElementById('arena100Table'));
-    document.getElementById('confFilter').addEventListener('change', e=>{
-      document.getElementById('arena100Body').innerHTML = tbody(e.target.value);
+    const val = (r,k) => k==='fill' ? (r.avg&&r.cap?r.avg/r.cap:0) : (r[k]||0);
+    const sorted = rows.slice().sort((a,b)=>val(b,attSort)-val(a,attSort));
+    const cards = sorted.map((r,i)=>{
+      const pct = r.avg&&r.cap?Math.round(r.avg/r.cap*100):null;
+      return `<div class="att-card" role="button" tabindex="0" data-tid="${esc(r.id||'')}" data-tname="${esc(r.name)}" data-tlogo="${esc(r.logo||'')}">
+        <div class="ac-head">${r.logo?`<img src="${esc(r.logo)}" alt="">`:''}<span class="ac-name">${esc(r.name)}</span><span class="ac-rank">#${i+1}</span></div>
+        <div class="ac-arena">${esc(r.arena||'Home venue')}</div>
+        <div class="ac-stats">
+          <div class="ac-stat"><div class="v">${fmt(r.avg)}</div><div class="k">Avg Attendance</div></div>
+          <div class="ac-stat"><div class="v">${fmt(r.cap)}</div><div class="k">Capacity</div></div>
+          <div class="ac-stat"><div class="v">${fmt(r.total)}</div><div class="k">Total Home</div></div>
+          <div class="ac-stat"><div class="v">${fmt(r.games)}</div><div class="k">Home Games</div></div>
+          <div class="ac-fill">${fillBar(r.avg,r.cap)}${pct!=null?` <span style="font-size:11px;color:var(--muted);font-weight:600">of capacity filled</span>`:''}</div>
+        </div>
+      </div>`;
+    }).join('');
+    const sortBtns = Object.entries(SORTS).map(([k,v])=>`<button class="sortbtn ${k===attSort?'active':''}" data-sort="${k}">${v[1]}</button>`).join('');
+    wrap.innerHTML = `<div class="att-sort"><span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600">Sort by:</span>${sortBtns}</div>
+      <div class="att-grid">${cards}</div>
+      <p class="footnote" style="margin-top:12px">Average and total attendance are computed live from each home game's official box score. Capacity is the team's current venue. Tap any team for its full profile \u2014 franchise history, roster, and game-by-game crowds.</p>`;
+    wrap.querySelectorAll('.sortbtn').forEach(b=>b.addEventListener('click',()=>{ attSort=b.dataset.sort; draw(rows); }));
+    wrap.querySelectorAll('.att-card').forEach(c=>{
+      const openIt = ()=> c.dataset.tid && openRoster({ id:c.dataset.tid, displayName:c.dataset.tname, logos:c.dataset.tlogo?[{href:c.dataset.tlogo}]:[] });
+      c.addEventListener('click', openIt);
+      c.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openIt(); } });
     });
   };
-  // Cached from a previous visit? Instant.
+  if(liveAttCache[key]){ prog.style.display='none'; draw(liveAttCache[key]); return; }
+  prog.style.display='block';
   try{
-    const raw = localStorage.getItem(CKEY);
-    if(raw){ const p = JSON.parse(raw);
-      if(Date.now()-p.t < 45*86400000 && p.rows?.length){ draw(p.rows); return; } }
-  }catch(e){}
-  btn.disabled = true; prog.style.display='block';
-  prog.textContent = 'Loading conference map\u2026';
-  try{
-    // Conference for each team, from the standings feed (one call)
-    const confOf = {};
-    try{
-      const st = await getJSON(API_V2('ncaam')+'/standings');
-      (st.children||[]).forEach(g=>{
-        const name = g.shortName || g.name || g.abbreviation || '';
-        (g.standings?.entries||[]).forEach(e=>{ if(e.team?.id) confOf[e.team.id] = name; });
-      });
-    }catch(e){}
-    const tj = await getJSON(API('ncaam')+'/teams?region=us&limit=500&groups=50');
+    const tj = await getJSON(API(forLeague)+'/teams?region=us&limit=64');
     const teams = (tj.sports?.[0]?.leagues?.[0]?.teams || []).map(t=>t.team).filter(Boolean);
-    const rows = [];
-    let done = 0;
-    await inChunks(teams, 6, async t=>{
-      try{
-        const d = await getJSON(API('ncaam')+`/teams/${t.id}`);
-        const v = d.team?.franchise?.venue || d.team?.venue;
-        const cap = v?.capacity ? Number(v.capacity) : null;
-        if(cap && cap > 0){
-          rows.push({ school:t.displayName, logo:t.logos?.[0]?.href||'', arena:v.fullName||'', cap, conf: confOf[t.id]||'\u2014' });
-        }
-      }catch(e){}
-      done++;
-      if(done % 12 === 0 || done===teams.length)
-        prog.textContent = `Checking every D-I arena\u2026 ${done} of ${teams.length} schools`;
-    });
-    rows.sort((a,b)=>b.cap-a.cap);
-    const top = rows.slice(0,100);
-    try{ localStorage.setItem(CKEY, JSON.stringify({t:Date.now(), rows:top})); }catch(e){}
-    draw(top);
-  }catch(err){
-    wrap.insertAdjacentHTML('afterbegin','<div class="error">Couldn\u2019t finish the arena crunch \u2014 try again in a minute.</div>');
-  }
-  prog.style.display='none'; btn.disabled=false;
-}
-
-async function buildLiveLeagueTable(){
-  const season = document.getElementById('liveYear').value;
-  const key = state.league+'|'+season;
-  const wrap = document.getElementById('liveTableWrap');
-  const prog = document.getElementById('liveProgress');
-  const btn = document.getElementById('buildBtn');
-  const draw = rows => {
-    const trs = rows.slice().sort((a,b)=>(b.avg||0)-(a.avg||0)).map((r,i)=>`
-      <tr>
-        <td class="rank">${i+1}</td>
-        <td><span class="teamcell">${r.logo?`<img src="${esc(r.logo)}" alt="">`:''}<span>${esc(r.name)}</span></span></td>
-        <td>${esc(r.arena||'\u2014')}</td>
-        <td class="num" data-v="${r.cap??''}">${fmt(r.cap)}</td>
-        <td class="num" data-v="${r.avg??''}">${fmt(r.avg)}</td>
-        <td class="num" data-v="${r.total??''}">${fmt(r.total)}</td>
-        <td class="num" data-v="${r.games??''}">${fmt(r.games)}</td>
-        <td data-v="${r.avg&&r.cap?Math.round(r.avg/r.cap*100):''}">${fillBar(r.avg,r.cap)}</td>
-      </tr>`).join('');
-    wrap.innerHTML = `<div class="table-scroll"><table id="liveAttTable" style="min-width:760px">
-      <thead><tr><th></th>
-        <th class="sortable" data-col="1">Team</th>
-        <th class="sortable" data-col="2">Arena (current)</th>
-        <th class="sortable num" data-col="3">Capacity</th>
-        <th class="sortable num" data-col="4">Avg Home</th>
-        <th class="sortable num" data-col="5">Total Home</th>
-        <th class="sortable num" data-col="6">Gms</th>
-        <th class="sortable" data-col="7">% Full</th>
-      </tr></thead><tbody>${trs}</tbody></table></div>
-      <p class="footnote">Computed live from the official per-game attendance figures on each game's stat sheet. Arena and capacity reflect the team's current building.</p>`;
-    makeSortable(document.getElementById('liveAttTable'));
-  };
-  if(liveAttCache[key]){ draw(liveAttCache[key]); return; }
-  btn.disabled = true; prog.style.display='block';
-  try{
-    /* College: crunch the ~30 programs that are perennially the biggest home draws
-       (a full 360-school crunch would take too long in the browser). Any other
-       program's numbers live in its team profile. */
-    const BIG_DRAWS = ['Kentucky','Syracuse','North Carolina','Tennessee','Louisville','Kansas','Indiana','Wisconsin','Purdue','Michigan State','Ohio State','Illinois','Nebraska','Creighton','Arkansas','BYU','Memphis','Alabama','Iowa','Maryland','Marquette','Dayton','Texas Tech','NC State','Michigan','Duke','Auburn','Iowa State','Cincinnati','Texas'];
-    const limit = state.league==='ncaam' ? '&limit=500&groups=50' : (state.league==='ncaaf' ? '&limit=500&groups=80' : '&limit=64');
-    const tj = await getJSON(API(state.league)+'/teams?region=us'+limit);
-    let teams = (tj.sports?.[0]?.leagues?.[0]?.teams || []).map(t=>t.team).filter(Boolean);
-    if(state.league==='ncaam'){
-      teams = teams.filter(t => BIG_DRAWS.includes(t.location) || BIG_DRAWS.includes(t.shortDisplayName));
-    }
     const rows = [];
     let done = 0;
     await inChunks(teams, 4, async t=>{
       let arena=null, cap=null;
       try{
-        const d = await getJSON(API(state.league)+`/teams/${t.id}`);
+        const d = await getJSON(API(forLeague)+`/teams/${t.id}`);
         const v = d.team?.franchise?.venue || d.team?.venue;
         if(v){ arena = v.fullName; cap = v.capacity ? Number(v.capacity) : null; }
       }catch(e){}
       let stats = {avg:null,total:null,games:0};
       try{ stats = homeAvg(await getTeamGameLog(t.id, season)); }catch(e){}
-      rows.push({ name:t.displayName, logo:t.logos?.[0]?.href||'', arena, cap, ...stats });
+      rows.push({ id:t.id, name:t.displayName, logo:t.logos?.[0]?.href||'', arena, cap, ...stats });
       done++;
-      prog.textContent = `Crunching real game data\u2026 ${done} of ${teams.length} teams`;
-      if(done % 4 === 0 || done===teams.length) draw(rows);
+      if(state.league===forLeague) prog.textContent = `Building from real game data\u2026 ${done} of ${teams.length} teams`;
+      if(done % 4 === 0 || done===teams.length){ if(state.league===forLeague) draw(rows); }
     });
+    if(state.league!==forLeague) return;
     liveAttCache[key] = rows;
+    prog.style.display='none';
     draw(rows);
   }catch(err){
-    wrap.innerHTML = `<div class="error">Couldn't finish building the table \u2014 the data feed may be rate-limiting. Try again in a minute.</div>`;
+    prog.style.display='none';
+    wrap.innerHTML = `<div class="error">Couldn't build the table \u2014 the data feed may be busy. Switch seasons to retry.</div>`;
   }
-  prog.style.display='none'; btn.disabled = false;
 }
 
 /* ================= RENDER: STANDINGS ================= */
@@ -1386,7 +1334,7 @@ async function renderStandings(){
     let html = header(`${L.label} Standings`, `Live from official league data \u2014 click any team for its full profile, schedule & crowd log <span class="pill">Auto-updating</span>`) + seasonOptions();
     // College: conference selector with Overall as the first choice
     if((state.league==='ncaam'||state.league==='ncaaf') && groups.length>4){
-      const sel = `<option value="-1">Overall \u2014 every team, ranked</option>` +
+      const sel = `<option value="-1" selected>Overall \u2014 every team, ranked</option>` +
         groups.map((g,i)=>`<option value="${i}">${esc(g.name||g.abbreviation||('Group '+(i+1)))}</option>`).join('');
       html += `<div class="controls"><select id="confSel" aria-label="Conference">${sel}</select></div><div id="standWrap"></div>`;
       setMain(html);
@@ -1394,7 +1342,7 @@ async function renderStandings(){
       const wrap = document.getElementById('standWrap');
       const drawOne = idx => { wrap.innerHTML = standingsTable(idx<0 ? overall : groups[idx]); wireStandingsSort(); };
       document.getElementById('confSel').addEventListener('change', e=>drawOne(+e.target.value));
-      drawOne(0);
+      drawOne(-1);
       return;
     }
     // Pro leagues: overall table first, conferences below
@@ -1415,6 +1363,7 @@ function standingsTable(group){
     <tr>
       <td class="rank">${i+1}</td>
       <td><span class="teamcell team-link" role="button" tabindex="0" data-tid="${esc(e.team?.id??'')}" data-tname="${esc(e.team?.displayName||e.team?.name||'')}" data-tlogo="${esc(e.team?.logos?.[0]?.href||'')}">${logoImg(e.team)}<span>${esc(e.team?.displayName||e.team?.name||'')}</span></span></td>
+      <td class="num" data-v="${titlesFor(e.team?.displayName||e.team?.name||'') ?? -1}" style="font-weight:700">${(()=>{const t=titlesFor(e.team?.displayName||e.team?.name||'');return t==null?'\u2014':(t===0?'0':'\ud83c\udfc6 '+t);})()}</td>
       <td class="num" data-v="${stat(e,['wins'])}">${stat(e,['wins'])}</td>
       <td class="num" data-v="${stat(e,['losses'])}">${stat(e,['losses'])}</td>
       <td class="num" data-v="${stat(e,['winPercent','winpercent'])}">${stat(e,['winPercent','winpercent'])}</td>
@@ -1429,12 +1378,13 @@ function standingsTable(group){
   const tid = 'st'+Math.random().toString(36).slice(2,8);
   return `
     <h2 class="section" style="font-size:20px;margin-top:6px">${esc(group.name||'')}</h2>
-    <div class="table-scroll"><table id="${tid}" style="min-width:820px">
+    <div class="table-scroll"><table id="${tid}" style="min-width:880px">
       <thead><tr><th></th><th class="sortable" data-col="1">Team</th>
-        <th class="sortable num" data-col="2">W</th><th class="sortable num" data-col="3">L</th>
-        <th class="sortable num" data-col="4">PCT</th><th class="num">GB</th>
-        <th class="sortable num" data-col="6">PF</th><th class="sortable num" data-col="7">PA</th>
-        <th class="sortable num" data-col="8">DIFF</th><th class="num">HOME</th><th class="num">AWAY</th><th class="num">STRK</th></tr></thead>
+        <th class="sortable num" data-col="2" title="Championships">TITLES</th>
+        <th class="sortable num" data-col="3">W</th><th class="sortable num" data-col="4">L</th>
+        <th class="sortable num" data-col="5">PCT</th><th class="num">GB</th>
+        <th class="sortable num" data-col="7">PF</th><th class="sortable num" data-col="8">PA</th>
+        <th class="sortable num" data-col="9">DIFF</th><th class="num">HOME</th><th class="num">AWAY</th><th class="num">STRK</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
 }

@@ -83,6 +83,16 @@ main.rise > *:nth-child(4){animation-delay:.15s}
 .mq-item .mq-stat{font-size:11px;letter-spacing:.08em;color:var(--accent);font-weight:700;text-transform:uppercase;transition:color .3s}
 .mq-lead{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.55);align-self:center;margin:0 22px 0 16px}
 
+/* Gliding photo mural of the league's venues */
+.mural{overflow:hidden;background:var(--ink);border:2px solid var(--ink);border-top:none}
+.mural-track{display:flex;width:max-content;animation:muralGlide 70s linear infinite}
+.marquee:hover .mq-track,.mural:hover .mural-track{animation-play-state:paused}
+@keyframes muralGlide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.mural-cell{position:relative;flex:none}
+.mural-cell img{height:132px;width:220px;object-fit:cover;display:block;border-right:2px solid var(--ink)}
+.mural-cell span{position:absolute;left:0;right:0;bottom:0;padding:3px 8px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:linear-gradient(transparent,rgba(20,26,36,.85))}
+@media(max-width:600px){.mural-cell img{height:96px;width:160px}}
+
 /* View tabs */
 .view-tabs{display:flex;gap:0;border:2px solid var(--ink);border-top:2px solid var(--ink);background:var(--card);overflow-x:auto}
 .view-tab{
@@ -194,7 +204,7 @@ tbody tr:hover{background:#FBFAF6}
 .fillbar b{position:relative;z-index:1;font-size:10px;font-weight:700;padding-left:4px;line-height:14px;color:var(--ink)}
 th.sortable{cursor:pointer;user-select:none}
 th.sortable:hover{color:var(--accent)}
-th.sortable::after{content:' \u21C5';opacity:.4}
+th.sortable::after{content:' \21C5';opacity:.4}
 .progress{font-size:13px;color:var(--muted);padding:10px 0}
 .build-btn{appearance:none;cursor:pointer;font-family:'Barlow Condensed';font-weight:700;font-size:18px;letter-spacing:.05em;text-transform:uppercase;
   background:var(--accent);color:var(--accent-ink);border:2px solid var(--ink);padding:10px 20px}
@@ -225,6 +235,7 @@ footer strong{color:var(--ink)}
     <nav class="league-tabs" id="leagueTabs" aria-label="League"></nav>
     <div class="hero" id="leagueHero" aria-hidden="true"></div>
     <div class="marquee" id="leagueMarquee" aria-hidden="true"></div>
+    <div class="mural" id="leagueMural" aria-hidden="true"></div>
     <nav class="view-tabs" id="viewTabs" aria-label="Section"></nav>
   </div>
 </header>
@@ -237,7 +248,7 @@ footer strong{color:var(--ink)}
 
 <footer>
   <div class="wrap">
-    <strong>About the data.</strong> Standings, scores, team records, rosters, and league leaders load live from ESPN&rsquo;s public data feed, which is compiled from official league stat sheets, and update automatically. Attendance figures come from official league / ESPN attendance reports for the season noted on each table. Ticket price figures are cited to their source (leagues do not publish official average ticket prices; the most-used industry sources are the Team Marketing Report Fan Cost Index and league gate reports). SportsStats.org is an independent reference site and is not affiliated with the NBA, WNBA, NCAA, or NFL.
+    <strong>About the data.</strong> Standings, scores, team records, rosters, and league leaders load live from ESPN&rsquo;s public data feed, which is compiled from official league stat sheets, and update automatically. Attendance figures come from official league / ESPN attendance reports for the season noted on each table. Ticket price figures are cited to their source (leagues do not publish official average ticket prices; the most-used industry sources are the Team Marketing Report Fan Cost Index and league gate reports). SportsStats.org is an independent reference site and is not affiliated with, endorsed by, or sponsored by the NBA, WNBA, NCAA, NFL, or ESPN. Team names, logos, venue imagery, and player photography are served from ESPN's public data feed for identification and informational purposes; all trademarks and images remain the property of their respective owners.
   </div>
 </footer>
 
@@ -799,12 +810,52 @@ async function renderMarquee(){
     </span>`).join('');
   mq.innerHTML = `<div class="mq-track"><span class="mq-lead">\u2605 ${LEAGUES[forLeague].label} Leaders</span>${strip}<span class="mq-lead">\u2605 ${LEAGUES[forLeague].label} Leaders</span>${strip}</div>`;
 }
+const muralCache = {};
+const MURAL_SCHOOLS = {
+  ncaam: ['Kentucky','Duke','Kansas','North Carolina','Indiana','Purdue','Gonzaga','Michigan State','Villanova','Arizona','Louisville','Creighton','Butler','Syracuse'],
+  ncaaf: ['Michigan','Ohio State','Alabama','Georgia','Texas','Notre Dame','LSU','Penn State','Tennessee','Oregon','Clemson','Nebraska','Texas A&M','Wisconsin']
+};
+async function renderMural(){
+  const mural = document.getElementById('leagueMural');
+  const forLeague = state.league;
+  mural.innerHTML = '';
+  let cells = muralCache[forLeague];
+  if(!cells){
+    cells = [];
+    try{
+      const isCollege = forLeague==='ncaam'||forLeague==='ncaaf';
+      const limit = forLeague==='ncaam' ? '&limit=500&groups=50' : (forLeague==='ncaaf' ? '&limit=500&groups=80' : '&limit=64');
+      const tj = await getJSON(API(forLeague)+'/teams?region=us'+limit);
+      let teams = (tj.sports?.[0]?.leagues?.[0]?.teams || []).map(t=>t.team).filter(Boolean);
+      if(isCollege){
+        const want = MURAL_SCHOOLS[forLeague];
+        teams = want.map(w=>teams.find(t=>t.location===w || t.shortDisplayName===w)).filter(Boolean);
+      } else {
+        teams = teams.slice(0,14);
+      }
+      await inChunks(teams, 5, async t=>{
+        try{
+          const d = await getJSON(API(forLeague)+`/teams/${t.id}`);
+          const v = d.team?.franchise?.venue || d.team?.venue;
+          const img = v?.images?.[0]?.href;
+          if(img) cells.push({ img, label: v.fullName || t.displayName });
+        }catch(e){}
+      });
+      if(cells.length >= 5) muralCache[forLeague] = cells;
+    }catch(e){}
+  }
+  if(state.league!==forLeague || !cells || cells.length < 5){ mural.style.display='none'; return; }
+  mural.style.display='';
+  const strip = cells.map(c=>`<span class="mural-cell"><img src="${esc(c.img)}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"><span>${esc(c.label)}</span></span>`).join('');
+  mural.innerHTML = `<div class="mural-track">${strip}${strip}</div>`;
+}
 function syncNav(){
   document.querySelectorAll('.league-tab').forEach(b=>b.classList.toggle('active', b.dataset.league===state.league));
   document.querySelectorAll('.view-tab').forEach(b=>b.classList.toggle('active', b.dataset.view===state.view));
   document.documentElement.style.setProperty('--accent', LEAGUES[state.league].accent);
   renderHero();
   renderMarquee();
+  renderMural();
 }
 
 /* ================= HELPERS ================= */
@@ -926,6 +977,9 @@ function makeSortable(tableEl){
         return dir==='desc' ? -c : c;
       });
       rows.forEach(r=>tbody.appendChild(r));
+      tbody.querySelectorAll('tr').forEach((tr,i)=>{
+        const rk = tr.querySelector('td.rank'); if(rk) rk.textContent = i+1;
+      });
     });
   });
 }
@@ -1228,8 +1282,11 @@ async function renderStandings(){
   }catch(err){ errorMain('Could not load standings for that season.', err); }
 }
 function standingsTable(group){
-  const entries = group.standings?.entries || [];
   const stat = (e,names)=>{ for(const n of names){ const s=(e.stats||[]).find(x=>x.name===n||x.type===n||x.abbreviation===n); if(s) return s.displayValue ?? s.value; } return '\u2014'; };
+  const num = v => { const n = parseFloat(v); return isNaN(n) ? -1 : n; };
+  const entries = (group.standings?.entries || []).slice().sort((a,b)=>
+    num(stat(b,['winPercent','winpercent'])) - num(stat(a,['winPercent','winpercent'])) ||
+    num(stat(b,['wins'])) - num(stat(a,['wins'])));
   const rows = entries.map((e,i)=>`
     <tr>
       <td class="rank">${i+1}</td>
@@ -1483,6 +1540,17 @@ async function openRoster(team){
     let players = [];
     (roster.value.athletes||[]).forEach(a=>{ if(a.items) players.push(...a.items); else players.push(a); });
     if(players.length){
+      const ageOf = p => {
+        if(p.age!=null) return p.age;
+        if(!p.dateOfBirth) return null;
+        const d = new Date(p.dateOfBirth);
+        return isNaN(d) ? null : Math.floor((Date.now()-d.getTime())/31557600000);
+      };
+      const dobOf = p => {
+        if(!p.dateOfBirth) return '';
+        const d = new Date(p.dateOfBirth);
+        return isNaN(d) ? '' : d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      };
       const rows = players.map(p=>`
         <tr>
           <td class="num" style="width:44px;color:var(--muted)">${esc(p.jersey ?? '')}</td>
@@ -1490,10 +1558,24 @@ async function openRoster(team){
           <td>${esc(p.position?.abbreviation || p.position?.name || '')}</td>
           <td class="num">${esc(p.displayHeight || '')}</td>
           <td class="num">${esc(p.displayWeight || '')}</td>
-          <td class="num">${esc(p.age ?? '')}</td>
+          <td class="num" data-v="${ageOf(p) ?? ''}">${esc(ageOf(p) ?? '\u2014')}</td>
+          <td class="num" style="white-space:nowrap;color:var(--muted)">${dobOf(p)}</td>
         </tr>`).join('');
-      rosterHTML = `<div class="table-scroll"><table>
-        <thead><tr><th class="num">#</th><th>Player</th><th>Pos</th><th class="num">HT</th><th class="num">WT</th><th class="num">Age</th></tr></thead>
+      // Team age profile, computed live from the roster
+      const ages = players.map(p=>({p, a: ageOf(p)})).filter(x=>x.a!=null);
+      let ageCard = '';
+      if(ages.length >= 3){
+        const avg = (ages.reduce((s,x)=>s+x.a,0)/ages.length).toFixed(1);
+        const oldest = ages.reduce((m,x)=>x.a>m.a?x:m);
+        const youngest = ages.reduce((m,x)=>x.a<m.a?x:m);
+        ageCard = `<div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:10px">
+          <div class="stat-card"><div class="big">${avg}</div><div class="lbl">Average Age</div></div>
+          <div class="stat-card"><div class="big">${oldest.a}</div><div class="lbl">Oldest</div><div class="note">${esc(oldest.p.fullName||oldest.p.displayName||'')}</div></div>
+          <div class="stat-card"><div class="big">${youngest.a}</div><div class="lbl">Youngest</div><div class="note">${esc(youngest.p.fullName||youngest.p.displayName||'')}</div></div>
+        </div>`;
+      }
+      rosterHTML = `${ageCard}<div class="table-scroll"><table id="rosterTable">
+        <thead><tr><th class="num">#</th><th class="sortable" data-col="1">Player</th><th class="sortable" data-col="2">Pos</th><th class="num">HT</th><th class="num">WT</th><th class="sortable num" data-col="5">Age</th><th class="sortable num" data-col="6">Born</th></tr></thead>
         <tbody>${rows}</tbody></table></div>`;
     }
   }

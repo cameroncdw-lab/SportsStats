@@ -1186,65 +1186,15 @@ function renderAttendance(){
     yearOpts += `<option value="${y}">${label}</option>`;
   }
 
-  // College keeps the capacity-ranked arenas/stadiums table (per-game college crowds are unreliable)
-  if(isCollege){
-    const venues = state.league==='ncaaf'?NCAAF_STADIUMS:NCAA_ARENAS;
-    setMain(`
-      ${header(`${L.label} Attendance`, `Home venues, ranked by capacity`)}
-      <h2 class="section" style="font-size:20px">${state.league==='ncaaf'?'The 100 Biggest Stadiums in College Football':'The 100 Biggest Arenas in College Basketball'}</h2>
-      <div class="rule"></div>
-      <div class="section-sub">Ranked by seating capacity. Pick a conference to re-rank within it, or click any column header to sort.</div>
-      <div class="controls">
-        <select id="confFilter"><option value="">All conferences</option>${[...new Set(venues.map(a=>a[2]))].sort().map(c=>`<option>${esc(c)}</option>`).join('')}</select>
-      </div>
-      <div class="table-scroll"><table id="arenaTable" style="min-width:660px">
-        <thead><tr><th></th>
-          <th class="sortable" data-col="1">School</th>
-          <th class="sortable" data-col="2">${state.league==='ncaaf'?'Stadium':'Arena'}</th>
-          <th class="sortable" data-col="3">Conference</th>
-          <th class="sortable num" data-col="4">Capacity</th>
-        </tr></thead>
-        <tbody id="arenaBody"></tbody></table></div>
-      <p class="footnote">For any school's actual crowds \u2014 game by game, season by season, with its average attendance and % of capacity \u2014 open its profile under Teams &amp; Rosters.</p>
-    `);
-    const at = document.getElementById('arenaTable');
-    const sorted100 = venues.slice().sort((a,b)=>b[3]-a[3]).slice(0,100);
-    let logoMap = {};
-    const drawArenas = flt => document.getElementById('arenaBody').innerHTML =
-      sorted100.filter(a=>!flt || a[2]===flt).map((a,i)=>{
-        const lg = logoMap[a[0]];
-        return `<tr><td class="rank">${i+1}</td>
-          <td><span class="teamcell">${lg?`<img src="${esc(lg)}" alt="" loading="lazy">`:''}<span style="font-weight:600">${esc(a[0])}</span></span></td>
-          <td>${esc(a[1])}</td>
-          <td>${esc(a[2])}</td>
-          <td class="num" data-v="${a[3]}">${fmt(a[3])}</td></tr>`;
-      }).join('');
-    drawArenas('');
-    makeSortable(at);
-    document.getElementById('confFilter').addEventListener('change', e=>drawArenas(e.target.value));
-    (async ()=>{
-      try{
-        const lg = state.league;
-        const groups = lg==='ncaaf' ? '&limit=500&groups=80' : '&limit=500&groups=50';
-        const tj = await getJSON(API(lg)+'/teams?region=us'+groups);
-        const teams = (tj.sports?.[0]?.leagues?.[0]?.teams || []).map(t=>t.team).filter(Boolean);
-        sorted100.forEach(a=>{
-          const t = teams.find(t=> t.location===a[0] || t.displayName===a[0] || t.shortDisplayName===a[0] ||
-            (t.displayName||'').startsWith(a[0]) || a[0].startsWith(t.location||'\u0000'));
-          if(t?.logos?.[0]?.href) logoMap[a[0]] = t.logos[0].href;
-        });
-        const cur = document.getElementById('confFilter');
-        if(document.getElementById('arenaBody')) drawArenas(cur?cur.value:'');
-      }catch(e){}
-    })();
-    return;
-  }
-
-  // Pro leagues: one clean, year-switchable attendance table, auto-built from real game data
+  // Every league now uses the same real-attendance card builder.
+  // College shows the major programs (biggest venues) so the crunch stays fast.
+  const sub = isCollege
+    ? `Real average attendance, total & home games \u2014 major programs, pick any season <span class="pill">Live</span>`
+    : `Home capacity, average attendance & total \u2014 pick any season <span class="pill">Live</span>`;
   setMain(`
-    ${header(`${L.label} Attendance`, `Home capacity, average attendance & total \u2014 pick any season <span class="pill">Live</span>`)}
+    ${header(`${L.label} Attendance`, sub)}
     <div class="controls"><select id="attYear">${yearOpts}</select></div>
-    <div id="attProgress" class="progress">Building the table from real game data\u2026</div>
+    <div id="attProgress" class="progress">Building from real game data\u2026 this can take a moment.</div>
     <div id="attWrap"></div>
   `);
   const yearSel = document.getElementById('attYear');
@@ -1290,8 +1240,19 @@ async function buildAttendanceTable(season){
   if(liveAttCache[key]){ prog.style.display='none'; draw(liveAttCache[key]); return; }
   prog.style.display='block';
   try{
-    const tj = await getJSON(API(forLeague)+'/teams?region=us&limit=64');
-    const teams = (tj.sports?.[0]?.leagues?.[0]?.teams || []).map(t=>t.team).filter(Boolean);
+    const isCollege = (forLeague==='ncaam'||forLeague==='ncaaf');
+    const limit = isCollege ? (forLeague==='ncaaf'?'&limit=500&groups=80':'&limit=500&groups=50') : '&limit=64';
+    const tj = await getJSON(API(forLeague)+'/teams?region=us'+limit);
+    let teams = (tj.sports?.[0]?.leagues?.[0]?.teams || []).map(t=>t.team).filter(Boolean);
+    if(isCollege){
+      // Limit to the ~60 biggest-venue programs from our curated list, matched by name.
+      const venues = forLeague==='ncaaf'?NCAAF_STADIUMS:NCAA_ARENAS;
+      const names = new Set(venues.slice(0,60).map(v=>v[0]));
+      teams = teams.filter(t => names.has(t.location) || names.has(t.shortDisplayName) ||
+        [...names].some(n => (t.displayName||'').startsWith(n) || n===t.location));
+      // capacity lookup from the curated list for the % Full bar
+      var capByName = {}; venues.forEach(v=>{ capByName[v[0]] = v[3]; });
+    }
     const rows = [];
     let done = 0;
     await inChunks(teams, 4, async t=>{
@@ -1301,6 +1262,11 @@ async function buildAttendanceTable(season){
         const v = d.team?.franchise?.venue || d.team?.venue;
         if(v){ arena = v.fullName; cap = v.capacity ? Number(v.capacity) : null; }
       }catch(e){}
+      if(isCollege && (!cap || !arena)){
+        const venues = forLeague==='ncaaf'?NCAAF_STADIUMS:NCAA_ARENAS;
+        const match = venues.find(vv => vv[0]===t.location || vv[0]===t.shortDisplayName || (t.displayName||'').startsWith(vv[0]));
+        if(match){ if(!cap) cap = match[3]; if(!arena) arena = match[1]; }
+      }
       let stats = {avg:null,total:null,games:0};
       try{ stats = homeAvg(await getTeamGameLog(t.id, season)); }catch(e){}
       rows.push({ id:t.id, name:t.displayName, logo:t.logos?.[0]?.href||'', arena, cap, ...stats });

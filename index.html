@@ -89,9 +89,10 @@ main.rise > *:nth-child(4){animation-delay:.15s}
 .marquee:hover .mq-track,.mural:hover .mural-track{animation-play-state:paused}
 @keyframes muralGlide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .mural-cell{position:relative;flex:none}
-.mural-cell img{height:132px;width:220px;object-fit:cover;display:block;border-right:2px solid var(--ink)}
-.mural-cell span{position:absolute;left:0;right:0;bottom:0;padding:3px 8px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:linear-gradient(transparent,rgba(20,26,36,.85))}
-@media(max-width:600px){.mural-cell img{height:96px;width:160px}}
+.mural-cell{width:150px;height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-right:2px solid rgba(255,255,255,.12)}
+.mural-cell img{height:52px;width:52px;object-fit:contain}
+.mural-cell span{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;text-align:center;padding:0 6px;line-height:1.15}
+@media(max-width:600px){.mural-cell{width:112px;height:88px}.mural-cell img{height:40px;width:40px}}
 
 /* View tabs */
 .view-tabs{display:flex;gap:0;border:2px solid var(--ink);border-top:2px solid var(--ink);background:var(--card);overflow-x:auto}
@@ -831,22 +832,19 @@ async function renderMural(){
         const want = MURAL_SCHOOLS[forLeague];
         teams = want.map(w=>teams.find(t=>t.location===w || t.shortDisplayName===w)).filter(Boolean);
       } else {
-        teams = teams.slice(0,14);
+        teams = teams.slice(0,18);
       }
-      await inChunks(teams, 5, async t=>{
-        try{
-          const d = await getJSON(API(forLeague)+`/teams/${t.id}`);
-          const v = d.team?.franchise?.venue || d.team?.venue;
-          const img = v?.images?.[0]?.href;
-          if(img) cells.push({ img, label: v.fullName || t.displayName });
-        }catch(e){}
-      });
+      cells = teams.map(t=>({
+        img: t.logos?.[0]?.href || '',
+        label: t.shortDisplayName || t.displayName || '',
+        color: t.color ? '#'+t.color.replace('#','') : '#1c2430'
+      })).filter(c=>c.img);
       if(cells.length >= 5) muralCache[forLeague] = cells;
     }catch(e){}
   }
   if(state.league!==forLeague || !cells || cells.length < 5){ mural.style.display='none'; return; }
   mural.style.display='';
-  const strip = cells.map(c=>`<span class="mural-cell"><img src="${esc(c.img)}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"><span>${esc(c.label)}</span></span>`).join('');
+  const strip = cells.map(c=>`<span class="mural-cell" style="background:${esc(c.color)}"><img src="${esc(c.img)}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"><span>${esc(c.label)}</span></span>`).join('');
   mural.innerHTML = `<div class="mural-track">${strip}${strip}</div>`;
 }
 function syncNav(){
@@ -872,9 +870,10 @@ async function tryFetch(url){
    always allow browser requests. Whichever works first gets remembered. */
 let goodRoute = 0;
 const ROUTES = [
-  u => u,
-  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u)
+  u => u,                                                              // direct
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),  // reliable relay
+  u => 'https://thingproxy.freeboard.io/fetch/' + u,                   // backup relay
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u)            // last resort
 ];
 async function getJSON(url, fresh){
   if(!fresh && cache[url]) return cache[url];
@@ -883,9 +882,8 @@ async function getJSON(url, fresh){
     const r = (goodRoute + i) % ROUTES.length;
     try{
       const j = await tryFetch(ROUTES[r](url));
-      goodRoute = r;
-      cache[url] = j;
-      return j;
+      if(j && (typeof j === 'object')){ goodRoute = r; cache[url] = j; return j; }
+      throw new Error('empty');
     }catch(e){ lastErr = e; }
   }
   throw lastErr;
@@ -1261,21 +1259,28 @@ async function renderStandings(){
     const j = await getJSON(API_V2(state.league)+'/standings'+seasonParam());
     const groups = j.children?.length ? j.children : (j.standings ? [j] : []);
     if(!groups.length) throw new Error('No standings data');
+    // Merged league-wide table (standingsTable sorts by record and ranks 1\u2013N)
+    const overall = {
+      name: `Overall \u2014 ${groups.length>1 ? 'League-Wide' : 'Standings'}`,
+      standings: { entries: groups.flatMap(g=>g.standings?.entries||[]) }
+    };
     let html = header(`${L.label} Standings`, `Live from official league data \u2014 click any team for its full profile, schedule & crowd log <span class="pill">Auto-updating</span>`) + seasonOptions();
-    // For college, offer a conference selector
-    let shown = groups;
+    // College: conference selector with Overall as the first choice
     if((state.league==='ncaam'||state.league==='ncaaf') && groups.length>4){
-      const sel = groups.map((g,i)=>`<option value="${i}">${esc(g.name||g.abbreviation||('Group '+(i+1)))}</option>`).join('');
+      const sel = `<option value="-1">Overall \u2014 every team, ranked</option>` +
+        groups.map((g,i)=>`<option value="${i}">${esc(g.name||g.abbreviation||('Group '+(i+1)))}</option>`).join('');
       html += `<div class="controls"><select id="confSel" aria-label="Conference">${sel}</select></div><div id="standWrap"></div>`;
       setMain(html);
       wireSeasonSel();
       const wrap = document.getElementById('standWrap');
-      const drawOne = idx => { wrap.innerHTML = standingsTable(groups[idx]); wireStandingsSort(); };
+      const drawOne = idx => { wrap.innerHTML = standingsTable(idx<0 ? overall : groups[idx]); wireStandingsSort(); };
       document.getElementById('confSel').addEventListener('change', e=>drawOne(+e.target.value));
       drawOne(0);
       return;
     }
-    html += shown.map(standingsTable).join('<div style="height:18px"></div>');
+    // Pro leagues: overall table first, conferences below
+    if(groups.length>1) html += standingsTable(overall) + '<div style="height:18px"></div>';
+    html += groups.map(standingsTable).join('<div style="height:18px"></div>');
     setMain(html);
     wireSeasonSel();
     wireStandingsSort();
@@ -1551,15 +1556,17 @@ async function openRoster(team){
         const d = new Date(p.dateOfBirth);
         return isNaN(d) ? '' : d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
       };
+      const inches = h => { const m = String(h||'').match(/(\d+)'\s*(\d+)?/); return m ? (+m[1]*12 + (+(m[2]||0))) : 0; };
+      const lbs = w => { const m = String(w||'').match(/(\d+)/); return m ? +m[1] : 0; };
       const rows = players.map(p=>`
         <tr>
-          <td class="num" style="width:44px;color:var(--muted)">${esc(p.jersey ?? '')}</td>
-          <td><span class="teamcell">${p.headshot?.href?`<img class="headshot" src="${esc(p.headshot.href)}" alt="" loading="lazy" onerror="this.style.display='none'">`:''}<span style="font-weight:600">${esc(p.fullName || p.displayName || '')}</span></span></td>
+          <td class="num" data-v="${parseInt(p.jersey)||0}" style="width:44px;color:var(--muted)">${esc(p.jersey ?? '')}</td>
+          <td data-v="${esc((p.fullName||p.displayName||'').toLowerCase())}"><span class="teamcell">${p.headshot?.href?`<img class="headshot" src="${esc(p.headshot.href)}" alt="" loading="lazy" onerror="this.style.display='none'">`:''}<span style="font-weight:600">${esc(p.fullName || p.displayName || '')}</span></span></td>
           <td>${esc(p.position?.abbreviation || p.position?.name || '')}</td>
-          <td class="num">${esc(p.displayHeight || '')}</td>
-          <td class="num">${esc(p.displayWeight || '')}</td>
+          <td class="num" data-v="${inches(p.displayHeight)}">${esc(p.displayHeight || '')}</td>
+          <td class="num" data-v="${lbs(p.displayWeight)}">${esc(p.displayWeight || '')}</td>
           <td class="num" data-v="${ageOf(p) ?? ''}">${esc(ageOf(p) ?? '\u2014')}</td>
-          <td class="num" style="white-space:nowrap;color:var(--muted)">${dobOf(p)}</td>
+          <td class="num" data-v="${p.dateOfBirth?new Date(p.dateOfBirth).getTime():''}" style="white-space:nowrap;color:var(--muted)">${dobOf(p)}</td>
         </tr>`).join('');
       // Team age profile, computed live from the roster
       const ages = players.map(p=>({p, a: ageOf(p)})).filter(x=>x.a!=null);
@@ -1574,8 +1581,9 @@ async function openRoster(team){
           <div class="stat-card"><div class="big">${youngest.a}</div><div class="lbl">Youngest</div><div class="note">${esc(youngest.p.fullName||youngest.p.displayName||'')}</div></div>
         </div>`;
       }
-      rosterHTML = `${ageCard}<div class="table-scroll"><table id="rosterTable">
-        <thead><tr><th class="num">#</th><th class="sortable" data-col="1">Player</th><th class="sortable" data-col="2">Pos</th><th class="num">HT</th><th class="num">WT</th><th class="sortable num" data-col="5">Age</th><th class="sortable num" data-col="6">Born</th></tr></thead>
+      rosterHTML = `${ageCard}<p class="footnote" style="margin:0 0 6px">Click any column header to sort \u2014 number, name, height, weight, age, or birth date.</p>
+      <div class="table-scroll"><table id="rosterTable">
+        <thead><tr><th class="sortable num" data-col="0">#</th><th class="sortable" data-col="1">Player</th><th class="sortable" data-col="2">Pos</th><th class="sortable num" data-col="3">HT</th><th class="sortable num" data-col="4">WT</th><th class="sortable num" data-col="5">Age</th><th class="sortable num" data-col="6">Born</th></tr></thead>
         <tbody>${rows}</tbody></table></div>`;
     }
   }

@@ -1024,8 +1024,36 @@ const ROUTES = [
   u => 'https://thingproxy.freeboard.io/fetch/' + u,                   // backup relay
   u => 'https://corsproxy.io/?url=' + encodeURIComponent(u)            // last resort
 ];
+/* Persistent cache: survives page reloads and repeat visits (localStorage),
+   with per-type freshness windows. In-memory `cache` stays as the fast first layer. */
+function cacheTTL(url){
+  if(/scoreboard/.test(url)) return 0;                    // live scores: never cache
+  if(/\/standings|\/leaders/.test(url)) return 2*3600e3;  // daily-changing: 2 hours
+  if(/\/summary\?event=/.test(url)) return 30*86400e3;    // finished games never change: 30 days
+  if(/\/teams\/\d+\/schedule/.test(url)) return 6*3600e3;  // schedules: 6 hours
+  return 12*3600e3;                                        // rosters, team info, arenas: 12 hours
+}
+function pcacheGet(url){
+  try{
+    const raw = localStorage.getItem('ss:'+url);
+    if(!raw) return null;
+    const o = JSON.parse(raw);
+    if(Date.now()-o.t > cacheTTL(url)){ localStorage.removeItem('ss:'+url); return null; }
+    return o.v;
+  }catch(e){ return null; }
+}
+function pcacheSet(url, v){
+  const ttl = cacheTTL(url);
+  if(ttl<=0) return;
+  try{ localStorage.setItem('ss:'+url, JSON.stringify({t:Date.now(), v})); }
+  catch(e){
+    // storage full \u2014 clear our old entries and retry once
+    try{ Object.keys(localStorage).filter(k=>k.startsWith('ss:')).forEach(k=>localStorage.removeItem(k)); localStorage.setItem('ss:'+url, JSON.stringify({t:Date.now(), v})); }catch(_){}
+  }
+}
 async function getJSON(url, fresh){
   if(!fresh && cache[url]) return cache[url];
+  if(!fresh){ const p = pcacheGet(url); if(p){ cache[url] = p; return p; } }
   let lastErr;
   // Two full passes through the route list; brief pause between passes for flaky relays.
   for(let attempt=0; attempt<2; attempt++){
@@ -1033,7 +1061,7 @@ async function getJSON(url, fresh){
       const r = (goodRoute + i) % ROUTES.length;
       try{
         const j = await tryFetch(ROUTES[r](url));
-        if(j && (typeof j === 'object')){ goodRoute = r; cache[url] = j; return j; }
+        if(j && (typeof j === 'object')){ goodRoute = r; cache[url] = j; pcacheSet(url, j); return j; }
         throw new Error('empty');
       }catch(e){ lastErr = e; }
     }
@@ -1238,6 +1266,8 @@ async function buildAttendanceTable(season){
     });
   };
   if(liveAttCache[key]){ prog.style.display='none'; draw(liveAttCache[key]); return; }
+  try{ const raw = localStorage.getItem('ss:att:'+key); if(raw){ const o=JSON.parse(raw);
+    if(Date.now()-o.t < 7*86400e3 && o.rows?.length){ liveAttCache[key]=o.rows; prog.style.display='none'; draw(o.rows); return; } } }catch(e){}
   prog.style.display='block';
   try{
     const isCollege = (forLeague==='ncaam'||forLeague==='ncaaf');
@@ -1276,6 +1306,7 @@ async function buildAttendanceTable(season){
     });
     if(state.league!==forLeague) return;
     liveAttCache[key] = rows;
+    try{ localStorage.setItem('ss:att:'+key, JSON.stringify({t:Date.now(), rows})); }catch(e){}
     prog.style.display='none';
     draw(rows);
   }catch(err){

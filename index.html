@@ -811,13 +811,33 @@ function syncNav(){
 const fmt = n => n==null ? '\u2014' : n.toLocaleString('en-US');
 const money = n => n==null ? '\u2014' : '$'+n.toFixed(2);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-async function getJSON(url, fresh){
-  if(!fresh && cache[url]) return cache[url];
+async function tryFetch(url){
   const r = await fetch(url);
   if(!r.ok) throw new Error('HTTP '+r.status);
-  const j = await r.json();
-  cache[url] = j;
-  return j;
+  return r.json();
+}
+/* Some networks/browsers block direct requests to the data feed (CORS or
+   tracking prevention). Route 1: direct. Route 2/3: public relays that
+   always allow browser requests. Whichever works first gets remembered. */
+let goodRoute = 0;
+const ROUTES = [
+  u => u,
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u)
+];
+async function getJSON(url, fresh){
+  if(!fresh && cache[url]) return cache[url];
+  let lastErr;
+  for(let i=0;i<ROUTES.length;i++){
+    const r = (goodRoute + i) % ROUTES.length;
+    try{
+      const j = await tryFetch(ROUTES[r](url));
+      goodRoute = r;
+      cache[url] = j;
+      return j;
+    }catch(e){ lastErr = e; }
+  }
+  throw lastErr;
 }
 /* Pull TV networks and radio stations out of a competition's broadcast data */
 function broadcastInfo(comp){
@@ -922,7 +942,7 @@ function setMain(html){
   m.classList.add('rise');
 }
 function loadingMain(msg){ setMain(`<div class="loading">${msg}</div>`); }
-function errorMain(msg){ setMain(`<div class="error">${msg}<br><span style="font-size:12px">This section pulls live data \u2014 try refreshing, or the feed may be briefly unavailable.</span></div>`); }
+function errorMain(msg, err){ setMain(`<div class="error">${msg}<br><span style="font-size:12px">This section pulls live data \u2014 try refreshing, or the feed may be briefly unavailable.</span>${err?`<br><span style="font-size:11px;color:var(--muted)">Details: ${esc(err.message||err)}</span>`:''}</div>`); }
 function header(title, sub){
   return `<h2 class="section">${title}</h2><div class="rule"></div><div class="section-sub">${sub}</div>`;
 }
@@ -1205,7 +1225,7 @@ async function renderStandings(){
     setMain(html);
     wireSeasonSel();
     wireStandingsSort();
-  }catch(err){ errorMain('Could not load standings for that season.'); }
+  }catch(err){ errorMain('Could not load standings for that season.', err); }
 }
 function standingsTable(group){
   const entries = group.standings?.entries || [];
@@ -1295,7 +1315,7 @@ async function renderLeaders(){
     inp.addEventListener('input', ()=>{
       document.getElementById('leaderGrid').innerHTML = drawCats(inp.value);
     });
-  }catch(err){ errorMain('Could not load stat leaders for that season.'); }
+  }catch(err){ errorMain('Could not load stat leaders for that season.', err); }
 }
 
 /* ================= RENDER: TEAMS & ROSTERS ================= */
@@ -1332,7 +1352,7 @@ async function renderTeams(){
       const q = inp.value.trim().toLowerCase();
       draw(q ? teams.filter(t=>(t.displayName||'').toLowerCase().includes(q)) : teams);
     });
-  }catch(err){ errorMain('Could not load teams right now.'); }
+  }catch(err){ errorMain('Could not load teams right now.', err); }
 }
 async function openRoster(team){
   const mount = document.getElementById('rosterMount');
@@ -1587,7 +1607,7 @@ async function renderScores(refreshing){
       if(state.view!=='scores'){ clearInterval(window._sbTick); return; }
       renderScores(true);
     }, 30000);
-  }catch(err){ errorMain('Could not load the scoreboard right now.'); }
+  }catch(err){ errorMain('Could not load the scoreboard right now.', err); }
 }
 
 /* ================= ROUTER ================= */

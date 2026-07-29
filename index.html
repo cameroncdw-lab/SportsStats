@@ -52,6 +52,37 @@ header{border-bottom:3px solid var(--ink);background:var(--paper)}
 .league-tab.active small{color:rgba(255,255,255,.75)}
 .league-tab:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}
 
+/* League hero band with sliding sport artwork */
+.hero{position:relative;overflow:hidden;background:var(--accent);color:#fff;border:2px solid var(--ink);border-top:none;transition:background .35s}
+.hero-inner{position:relative;z-index:2;padding:18px 18px 16px}
+.hero-league{font-family:'Barlow Condensed';font-weight:700;font-size:clamp(26px,5vw,42px);line-height:1;text-transform:uppercase;letter-spacing:.03em;animation:heroSlide .45s ease both}
+.hero-sub{font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.85;margin-top:4px;animation:heroSlide .55s ease both}
+.hero-art{position:absolute;right:-30px;top:50%;transform:translateY(-50%);height:170%;opacity:.16;z-index:1;animation:artSlide .6s ease both}
+.hero-lines{position:absolute;inset:0;z-index:0;opacity:.14}
+@keyframes heroSlide{from{transform:translateX(-28px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes artSlide{from{transform:translate(60px,-50%) rotate(8deg);opacity:0}to{transform:translate(0,-50%) rotate(0)}}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+main.rise > *{animation:rise .4s ease both}
+main.rise > *:nth-child(2){animation-delay:.05s}
+main.rise > *:nth-child(3){animation-delay:.1s}
+main.rise > *:nth-child(4){animation-delay:.15s}
+.headshot{width:30px;height:30px;border-radius:50%;object-fit:cover;object-position:top;background:var(--paper);border:1px solid var(--line);flex:none}
+.headshot-lg{width:42px;height:42px;border-radius:50%;object-fit:cover;object-position:top;background:var(--paper);border:2px solid var(--accent);flex:none}
+.stadium-banner{position:relative}
+.stadium-banner img{width:100%;max-height:240px;object-fit:cover;display:block;border-bottom:3px solid var(--ink)}
+.stadium-banner::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(20,26,36,.55));pointer-events:none}
+
+/* Continuously gliding strip of the league's stars */
+.marquee{position:relative;overflow:hidden;background:var(--ink);border:2px solid var(--ink);border-top:none;min-height:64px}
+.mq-track{display:flex;width:max-content;animation:glide 45s linear infinite;padding:10px 0}
+.marquee:hover .mq-track{animation-play-state:paused}
+@keyframes glide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.mq-item{display:flex;align-items:center;gap:10px;color:#fff;margin-right:34px;white-space:nowrap;cursor:default}
+.mq-item img{width:44px;height:44px;border-radius:50%;object-fit:cover;object-position:top;background:#fff;border:2px solid var(--accent);transition:border-color .3s}
+.mq-item .mq-name{font-family:'Barlow Condensed';font-weight:700;font-size:17px;letter-spacing:.03em;text-transform:uppercase;line-height:1.05}
+.mq-item .mq-stat{font-size:11px;letter-spacing:.08em;color:var(--accent);font-weight:700;text-transform:uppercase;transition:color .3s}
+.mq-lead{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.55);align-self:center;margin:0 22px 0 16px}
+
 /* View tabs */
 .view-tabs{display:flex;gap:0;border:2px solid var(--ink);border-top:2px solid var(--ink);background:var(--card);overflow-x:auto}
 .view-tab{
@@ -192,6 +223,8 @@ footer strong{color:var(--ink)}
       <div class="tagline">Attendance &middot; Ticket Prices &middot; Teams &middot; Players</div>
     </div>
     <nav class="league-tabs" id="leagueTabs" aria-label="League"></nav>
+    <div class="hero" id="leagueHero" aria-hidden="true"></div>
+    <div class="marquee" id="leagueMarquee" aria-hidden="true"></div>
     <nav class="view-tabs" id="viewTabs" aria-label="Section"></nav>
   </div>
 </header>
@@ -592,7 +625,84 @@ const NCAAF_STADIUMS = [
 ["Michigan State","Spartan Stadium","Big Ten",75005],
 ["Washington","Husky Stadium","Big Ten",70138],
 ["Iowa","Kinnick Stadium","Big Ten",69250],
-["Virginia Tech","Lane Stadium","ACC",65632]
+["Pittsburgh","Acrisure Stadium","ACC",68400],
+["Temple","Lincoln Financial Field","American",67594],
+["South Florida","Raymond James Stadium","American",65890],
+["Virginia Tech","Lane Stadium","ACC",65632],
+["Miami","Hard Rock Stadium","ACC",65326],
+["UNLV","Allegiant Stadium","Mountain West",65000],
+["Ole Miss","Vaught\u2013Hemingway Stadium","SEC",64038],
+["UTSA","Alamodome","American",64000],
+["BYU","LaVell Edwards Stadium","Big 12",63470],
+["Missouri","Faurot Field at Memorial Stadium","SEC",62621],
+["Iowa State","Jack Trice Stadium","Big 12",61500],
+["Virginia","Scott Stadium","ACC",61500],
+["Kentucky","Kroger Field","SEC",61000],
+["Louisville","L&N Federal Credit Union Stadium","ACC",60800],
+["Illinois","Memorial Stadium","Big Ten",60670],
+["Mississippi State","Davis Wade Stadium","SEC",60311],
+["Texas Tech","Jones AT&T Stadium","Big 12",60229],
+["West Virginia","Milan Puskar Stadium","Big 12",60000],
+["Memphis","Simmons Bank Liberty Stadium","American",58325],
+["Purdue","Ross\u2013Ade Stadium","Big Ten",57236],
+["NC State","Carter\u2013Finley Stadium","ACC",56919],
+["Oklahoma State","Boone Pickens Stadium","Big 12",55509],
+["Georgia Tech","Bobby Dodd Stadium","ACC",55000],
+["Oregon","Autzen Stadium","Big Ten",54000],
+["Arizona State","Mountain America Stadium","Big 12",53599],
+["Indiana","Memorial Stadium","Big Ten",52626],
+["Rutgers","SHI Stadium","Big Ten",52454],
+["California","California Memorial Stadium","ACC",51892],
+["Maryland","SECU Stadium","Big Ten",51802],
+["East Carolina","Dowdy\u2013Ficklen Stadium","American",51000],
+["Minnesota","Huntington Bank Stadium","Big Ten",50805],
+["Arizona","Arizona Stadium","Big 12",50782],
+["North Carolina","Kenan Memorial Stadium","ACC",50500],
+["Stanford","Stanford Stadium","ACC",50424],
+["Colorado","Folsom Field","Big 12",50183],
+["Kansas State","Bill Snyder Family Stadium","Big 12",50000],
+["Syracuse","JMA Wireless Dome","ACC",49057],
+["Kansas","David Booth Kansas Memorial Stadium","Big 12",47233],
+["UAB","Protective Stadium","American",47100],
+["Rice","Rice Stadium","American",47000],
+["Air Force","Falcon Stadium","Mountain West",46692],
+["UTEP","Sun Bowl","Conference USA",46670],
+["Baylor","McLane Stadium","Big 12",45140],
+["Boston College","Alumni Stadium","ACC",44500],
+["UCF","FBC Mortgage Stadium","Big 12",44206],
+["Louisiana","Cajun Field","Sun Belt",41426],
+["Fresno State","Valley Children's Stadium","Pac-12",40727],
+["Duke","Wallace Wade Stadium","ACC",40004],
+["Cincinnati","Nippert Stadium","Big 12",40000],
+["Houston","TDECU Stadium","Big 12",40000],
+["UConn","Pratt & Whitney Stadium at Rentschler Field","Big 12",40000],
+["New Mexico","University Stadium","Mountain West",39224],
+["Marshall","Joan C. Edwards Stadium","Sun Belt",38227],
+["Army","Michie Stadium","American",38000],
+["Colorado State","Canvas Stadium","Pac-12",36500],
+["Boise State","Albertsons Stadium","Pac-12",36387],
+["Oregon State","Reser Stadium","Pac-12",35548],
+["San Diego State","Snapdragon Stadium","Pac-12",35000],
+["Vanderbilt","FirstBank Stadium","SEC",35000],
+["Northwestern","New Ryan Field (opening 2026)","Big Ten",35000],
+["Navy","Navy\u2013Marine Corps Memorial Stadium","American",34000],
+["Washington State","Martin Stadium","Pac-12",32952],
+["SMU","Gerald J. Ford Stadium","ACC",32000],
+["Wake Forest","Allegacy Federal Credit Union Stadium","ACC",31500],
+["Arkansas State","Centennial Bank Stadium","Sun Belt",30964],
+["North Texas","DATCU Stadium","American",30850],
+["Middle Tennessee","Johnny \u201CRed\u201D Floyd Stadium","Conference USA",30788],
+["San Jose State","CEFCU Stadium","Mountain West",30456],
+["UL Monroe","Malone Stadium","Sun Belt",30427],
+["Central Michigan","Kelly/Shorts Stadium","MAC",30255],
+["Western Michigan","Waldo Stadium","MAC",30200],
+["Eastern Michigan","Rynearson Stadium","MAC",30200],
+["Texas State","UFCU Stadium","Pac-12",30008],
+["Appalachian State","Kidd Brewer Stadium","Sun Belt",30000],
+["Troy","Veterans Memorial Stadium","Sun Belt",30000],
+["Akron","InfoCision Stadium","MAC",30000],
+["Tulane","Yulman Stadium","American",30000],
+["Tulsa","H.A. Chapman Stadium","American",30000]
 ];
 
 /* ================= STATE ================= */
@@ -616,10 +726,85 @@ function buildNav(){
   });
   syncNav();
 }
+/* Original vector art \u2014 a basketball or football, plus court arcs / yard lines */
+function sportArt(){
+  const isFB = LEAGUES[state.league].sport==='football';
+  if(isFB) return `
+    <svg class="hero-art" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#fff">
+      <ellipse cx="100" cy="60" rx="82" ry="46" stroke-width="5"/>
+      <path d="M40 26 Q100 -8 160 26 M40 94 Q100 128 160 94" stroke-width="4"/>
+      <line x1="72" y1="60" x2="128" y2="60" stroke-width="5"/>
+      ${[80,90,100,110,120].map(x=>`<line x1="${x}" y1="50" x2="${x}" y2="70" stroke-width="4"/>`).join('')}
+    </svg>
+    <svg class="hero-lines" viewBox="0 0 600 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" stroke="#fff">
+      ${[0,1,2,3,4,5,6,7,8,9,10].map(i=>`<line x1="${i*60}" y1="0" x2="${i*60}" y2="100" stroke-width="2"/>`).join('')}
+      ${[0,1,2,3,4,5,6,7,8,9].map(i=>`<line x1="${i*60+30}" y1="42" x2="${i*60+30}" y2="58" stroke-width="2"/>`).join('')}
+    </svg>`;
+  return `
+    <svg class="hero-art" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#fff">
+      <circle cx="60" cy="60" r="54" stroke-width="5"/>
+      <line x1="60" y1="6" x2="60" y2="114" stroke-width="4"/>
+      <line x1="6" y1="60" x2="114" y2="60" stroke-width="4"/>
+      <path d="M22 20 Q60 60 22 100 M98 20 Q60 60 98 100" stroke-width="4"/>
+    </svg>
+    <svg class="hero-lines" viewBox="0 0 600 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#fff">
+      <path d="M-40 100 A140 140 0 0 1 240 100" stroke-width="3"/>
+      <path d="M40 100 A60 60 0 0 1 160 100" stroke-width="3"/>
+      <rect x="70" y="60" width="60" height="40" stroke-width="3"/>
+      <path d="M360 100 A140 140 0 0 1 640 100" stroke-width="3"/>
+      <path d="M440 100 A60 60 0 0 1 560 100" stroke-width="3"/>
+    </svg>`;
+}
+function renderHero(){
+  const L = LEAGUES[state.league];
+  const hero = document.getElementById('leagueHero');
+  hero.innerHTML = `${sportArt()}<div class="hero-inner">
+    <div class="hero-league">${L.label}</div>
+    <div class="hero-sub">${L.sub} \u00b7 Attendance \u00b7 Tickets \u00b7 Teams \u00b7 Players</div>
+  </div>`;
+}
+async function renderMarquee(){
+  const mq = document.getElementById('leagueMarquee');
+  const forLeague = state.league;
+  mq.innerHTML = '';
+  let items = [];
+  try{
+    const j = await getJSON(API_V3(forLeague)+'/leaders');
+    const cats = j.leaders?.categories || j.categories || [];
+    const seen = new Set();
+    cats.forEach(cat=>{
+      (cat.leaders||[]).slice(0,2).forEach(l=>{
+        const name = l.athlete?.displayName || l.athlete?.fullName;
+        const img = l.athlete?.headshot?.href;
+        if(!name || !img || seen.has(name)) return;
+        seen.add(name);
+        items.push({ img, name, stat: `${l.displayValue ?? ''} ${cat.abbreviation || cat.shortDisplayName || cat.displayName || ''}` });
+      });
+    });
+  }catch(e){}
+  if(!items.length){
+    // Off-season / feed hiccup: glide the league's team logos instead
+    try{
+      const limit = forLeague==='ncaam' ? '&limit=500&groups=50' : (forLeague==='ncaaf' ? '&limit=500&groups=80' : '&limit=64');
+      const tj = await getJSON(API(forLeague)+'/teams?region=us'+limit);
+      const teams = (tj.sports?.[0]?.leagues?.[0]?.teams || []).map(t=>t.team).filter(t=>t?.logos?.[0]?.href).slice(0,24);
+      items = teams.map(t=>({ img:t.logos[0].href, name:t.shortDisplayName||t.displayName, stat:'' }));
+    }catch(e){}
+  }
+  if(state.league!==forLeague || !items.length) return; // user already switched leagues
+  const strip = items.map(it=>`
+    <span class="mq-item">
+      <img src="${esc(it.img)}" alt="" loading="lazy" onerror="this.style.display='none'">
+      <span><span class="mq-name">${esc(it.name)}</span><br><span class="mq-stat">${esc(it.stat)}</span></span>
+    </span>`).join('');
+  mq.innerHTML = `<div class="mq-track"><span class="mq-lead">\u2605 ${LEAGUES[forLeague].label} Leaders</span>${strip}<span class="mq-lead">\u2605 ${LEAGUES[forLeague].label} Leaders</span>${strip}</div>`;
+}
 function syncNav(){
   document.querySelectorAll('.league-tab').forEach(b=>b.classList.toggle('active', b.dataset.league===state.league));
   document.querySelectorAll('.view-tab').forEach(b=>b.classList.toggle('active', b.dataset.view===state.view));
   document.documentElement.style.setProperty('--accent', LEAGUES[state.league].accent);
+  renderHero();
+  renderMarquee();
 }
 
 /* ================= HELPERS ================= */
@@ -729,7 +914,13 @@ const fillBar = (avg, cap) => {
   const pct = Math.round(avg/cap*100);
   return `<div class="fillbar"><span style="transform:scaleX(${Math.min(pct,100)/100})"></span><b>${pct}%</b></div>`;
 };
-function setMain(html){ document.getElementById('main').innerHTML = html; }
+function setMain(html){
+  const m = document.getElementById('main');
+  m.classList.remove('rise');
+  m.innerHTML = html;
+  void m.offsetWidth;
+  m.classList.add('rise');
+}
 function loadingMain(msg){ setMain(`<div class="loading">${msg}</div>`); }
 function errorMain(msg){ setMain(`<div class="error">${msg}<br><span style="font-size:12px">This section pulls live data \u2014 try refreshing, or the feed may be briefly unavailable.</span></div>`); }
 function header(title, sub){
@@ -795,7 +986,7 @@ function renderAttendance(){
     </div>
     <div id="liveProgress" class="progress" style="display:none"></div>
     <div id="liveTableWrap"></div>` : `
-    <h2 class="section" style="font-size:20px;margin-top:26px">${state.league==='ncaaf'?'The 25 Biggest Stadiums in College Football':'The 100 Biggest Buildings in College Basketball'}</h2>
+    <h2 class="section" style="font-size:20px;margin-top:26px">${state.league==='ncaaf'?'The 100 Biggest Stadiums in College Football':'The 100 Biggest Buildings in College Basketball'}</h2>
     <div class="rule"></div>
     <div class="section-sub">Ranked by seating capacity. Pick a conference to re-rank within it, or click any column header to sort.</div>
     <div class="controls">
@@ -1077,7 +1268,7 @@ async function renderLeaders(){
         const rows = list.map((l,i)=>`
           <tr>
             <td class="rank">${i+1}</td>
-            <td style="font-weight:600">${esc(l.athlete?.displayName || l.athlete?.fullName || '\u2014')}</td>
+            <td><span class="teamcell">${l.athlete?.headshot?.href?`<img class="headshot-lg" src="${esc(l.athlete.headshot.href)}" alt="" loading="lazy" onerror="this.style.display='none'">`:''}<span style="font-weight:600">${esc(l.athlete?.displayName || l.athlete?.fullName || '\u2014')}</span></span></td>
             <td>${esc(l.team?.abbreviation || l.athlete?.teamShortName || '')}</td>
             <td class="num" style="font-weight:700">${esc(l.displayValue ?? l.value ?? '')}</td>
           </tr>`).join('');
@@ -1200,7 +1391,7 @@ async function openRoster(team){
     const img = venue.images?.[0]?.href || '';
     const loc = venue.address ? [venue.address.city, venue.address.state].filter(Boolean).join(', ') : '';
     html += `
-      ${img?`<img src="${esc(img)}" alt="${esc(venue.fullName||'Stadium')}" style="width:100%;max-height:200px;object-fit:cover;display:block;border-bottom:3px solid var(--ink)">`:''}
+      ${img?`<div class="stadium-banner"><img src="${esc(img)}" alt="${esc(venue.fullName||'Stadium')}"></div>`:''}
       <div style="padding:12px 16px 0">
         <div style="font-family:'Barlow Condensed';font-weight:700;font-size:22px;text-transform:uppercase">${esc(venue.fullName||'')}</div>
         <div style="font-size:13px;color:var(--muted)">${esc(loc)}${venue.capacity?` \u00b7 Capacity ${Number(venue.capacity).toLocaleString()}`:''}${venue.grass!=null?` \u00b7 ${venue.grass?'Grass':'Turf'}`:''}</div>
@@ -1275,7 +1466,7 @@ async function openRoster(team){
       const rows = players.map(p=>`
         <tr>
           <td class="num" style="width:44px;color:var(--muted)">${esc(p.jersey ?? '')}</td>
-          <td style="font-weight:600">${esc(p.fullName || p.displayName || '')}</td>
+          <td><span class="teamcell">${p.headshot?.href?`<img class="headshot" src="${esc(p.headshot.href)}" alt="" loading="lazy" onerror="this.style.display='none'">`:''}<span style="font-weight:600">${esc(p.fullName || p.displayName || '')}</span></span></td>
           <td>${esc(p.position?.abbreviation || p.position?.name || '')}</td>
           <td class="num">${esc(p.displayHeight || '')}</td>
           <td class="num">${esc(p.displayWeight || '')}</td>

@@ -974,13 +974,17 @@ const ROUTES = [
 async function getJSON(url, fresh){
   if(!fresh && cache[url]) return cache[url];
   let lastErr;
-  for(let i=0;i<ROUTES.length;i++){
-    const r = (goodRoute + i) % ROUTES.length;
-    try{
-      const j = await tryFetch(ROUTES[r](url));
-      if(j && (typeof j === 'object')){ goodRoute = r; cache[url] = j; return j; }
-      throw new Error('empty');
-    }catch(e){ lastErr = e; }
+  // Two full passes through the route list; brief pause between passes for flaky relays.
+  for(let attempt=0; attempt<2; attempt++){
+    for(let i=0;i<ROUTES.length;i++){
+      const r = (goodRoute + i) % ROUTES.length;
+      try{
+        const j = await tryFetch(ROUTES[r](url));
+        if(j && (typeof j === 'object')){ goodRoute = r; cache[url] = j; return j; }
+        throw new Error('empty');
+      }catch(e){ lastErr = e; }
+    }
+    if(attempt===0) await new Promise(res=>setTimeout(res, 700));
   }
   throw lastErr;
 }
@@ -1154,7 +1158,7 @@ function renderAttendance(){
     </div>
     <div id="liveProgress" class="progress" style="display:none"></div>
     <div id="liveTableWrap"></div>` : `
-    <h2 class="section" style="font-size:20px;margin-top:26px">${state.league==='ncaaf'?'The 100 Biggest Stadiums in College Football':'The 100 Biggest Buildings in College Basketball'}</h2>
+    <h2 class="section" style="font-size:20px;margin-top:26px">${state.league==='ncaaf'?'The 100 Biggest Stadiums in College Football':'The 100 Biggest Arenas in College Basketball'}</h2>
     <div class="rule"></div>
     <div class="section-sub">Ranked by seating capacity. Pick a conference to re-rank within it, or click any column header to sort.</div>
     <div class="controls">
@@ -1187,16 +1191,35 @@ function renderAttendance(){
   const at = document.getElementById('arenaTable');
   if(at){
     const sorted100 = (state.league==='ncaaf'?NCAAF_STADIUMS:NCAA_ARENAS).slice().sort((a,b)=>b[3]-a[3]).slice(0,100);
+    let logoMap = {};
     const drawArenas = flt => document.getElementById('arenaBody').innerHTML =
-      sorted100.filter(a=>!flt || a[2]===flt).map((a,i)=>`
-        <tr><td class="rank">${i+1}</td>
-          <td style="font-weight:600">${esc(a[0])}</td>
+      sorted100.filter(a=>!flt || a[2]===flt).map((a,i)=>{
+        const lg = logoMap[a[0]];
+        return `<tr><td class="rank">${i+1}</td>
+          <td><span class="teamcell">${lg?`<img src="${esc(lg)}" alt="" loading="lazy">`:''}<span style="font-weight:600">${esc(a[0])}</span></span></td>
           <td>${esc(a[1])}</td>
           <td>${esc(a[2])}</td>
-          <td class="num" data-v="${a[3]}">${fmt(a[3])}</td></tr>`).join('');
+          <td class="num" data-v="${a[3]}">${fmt(a[3])}</td></tr>`;
+      }).join('');
     drawArenas('');
     makeSortable(at);
     document.getElementById('confFilter').addEventListener('change', e=>drawArenas(e.target.value));
+    // Fetch logos in the background, then redraw with them (name-matched to the school column)
+    (async ()=>{
+      try{
+        const lg = state.league==='ncaaf' ? 'ncaaf':'ncaam';
+        const groups = lg==='ncaaf' ? '&limit=500&groups=80' : '&limit=500&groups=50';
+        const tj = await getJSON(API(lg)+'/teams?region=us'+groups);
+        const teams = (tj.sports?.[0]?.leagues?.[0]?.teams || []).map(t=>t.team).filter(Boolean);
+        sorted100.forEach(a=>{
+          const t = teams.find(t=> t.location===a[0] || t.displayName===a[0] || t.shortDisplayName===a[0] ||
+            (t.displayName||'').startsWith(a[0]) || a[0].startsWith(t.location||'\u0000'));
+          if(t?.logos?.[0]?.href) logoMap[a[0]] = t.logos[0].href;
+        });
+        const cur = document.getElementById('confFilter');
+        if(document.getElementById('arenaBody')) drawArenas(cur?cur.value:'');
+      }catch(e){}
+    })();
   }
   const btn = document.getElementById('buildBtn');
   if(btn) btn.addEventListener('click', buildLiveLeagueTable);
@@ -1714,6 +1737,8 @@ async function openRoster(team){
   </div>`;
 
   body.innerHTML = html;
+  const rosterEl = document.getElementById('rosterTable');
+  if(rosterEl) makeSortable(rosterEl);
 
   /* Load + render the game log for a chosen season */
   const loadLog = async (season) => {

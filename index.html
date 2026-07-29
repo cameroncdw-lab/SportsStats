@@ -133,6 +133,13 @@ td.rank{color:var(--muted);width:36px}
 .teamcell{display:flex;align-items:center;gap:10px;font-weight:600}
 .teamcell img{width:24px;height:24px;object-fit:contain;flex:none}
 .team-link{cursor:pointer}
+.reloc{display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin-top:8px}
+.reloc .city{font-size:13px;font-weight:600;white-space:nowrap}
+.reloc .leg{position:relative;width:46px;height:22px;flex:none}
+.reloc .leg svg{position:absolute;inset:0;width:100%;height:100%}
+.reloc .plane{position:absolute;top:50%;left:0;font-size:13px;transform:translate(-2px,-58%);animation:fly 2.6s ease-in-out infinite}
+@keyframes fly{0%{left:2px;opacity:0}20%{opacity:1}80%{opacity:1}100%{left:32px;opacity:0}}
+.founded-badge{display:inline-block;font-family:'Barlow Condensed';font-weight:700;font-size:13px;letter-spacing:.05em;text-transform:uppercase;border:2px solid var(--ink);padding:3px 10px;margin-top:2px}
 .team-link:hover span{color:var(--accent);text-decoration:underline}
 tbody tr:hover{background:#FBFAF6}
 
@@ -409,6 +416,95 @@ nba: {
     ['Minnesota Timberwolves',15067,482132,32,null]
   ],
   rowNote: 'Figures above are from the league attendance report as published in-season (home games played shown). Remaining teams will be added when we pull the complete final report.'
+}
+};
+
+
+/* ================= FRANCHISE HISTORY =================
+   f = founding year; cities = chronological homes (for the relocation animation).
+   Single-city franchises have a one-item list (no plane shown).
+==================================================== */
+const FRANCHISE = {
+nba: {
+"Atlanta Hawks":{f:1946,cities:["Tri-Cities","Milwaukee","St. Louis","Atlanta"]},
+"Boston Celtics":{f:1946,cities:["Boston"]},
+"Brooklyn Nets":{f:1967,cities:["New Jersey (Teaneck)","New York","New Jersey","Brooklyn"]},
+"Charlotte Hornets":{f:1988,cities:["Charlotte"]},
+"Chicago Bulls":{f:1966,cities:["Chicago"]},
+"Cleveland Cavaliers":{f:1970,cities:["Cleveland"]},
+"Dallas Mavericks":{f:1980,cities:["Dallas"]},
+"Denver Nuggets":{f:1967,cities:["Denver"]},
+"Detroit Pistons":{f:1941,cities:["Fort Wayne","Detroit"]},
+"Golden State Warriors":{f:1946,cities:["Philadelphia","San Francisco","Oakland","San Francisco"]},
+"Houston Rockets":{f:1967,cities:["San Diego","Houston"]},
+"Indiana Pacers":{f:1967,cities:["Indianapolis"]},
+"LA Clippers":{f:1970,cities:["Buffalo","San Diego","Los Angeles"]},
+"Los Angeles Lakers":{f:1947,cities:["Minneapolis","Los Angeles"]},
+"Memphis Grizzlies":{f:1995,cities:["Vancouver","Memphis"]},
+"Miami Heat":{f:1988,cities:["Miami"]},
+"Milwaukee Bucks":{f:1968,cities:["Milwaukee"]},
+"Minnesota Timberwolves":{f:1989,cities:["Minneapolis"]},
+"New Orleans Pelicans":{f:2002,cities:["New Orleans","Oklahoma City","New Orleans"]},
+"New York Knicks":{f:1946,cities:["New York"]},
+"Oklahoma City Thunder":{f:1967,cities:["Seattle","Oklahoma City"]},
+"Orlando Magic":{f:1989,cities:["Orlando"]},
+"Philadelphia 76ers":{f:1946,cities:["Syracuse","Philadelphia"]},
+"Phoenix Suns":{f:1968,cities:["Phoenix"]},
+"Portland Trail Blazers":{f:1970,cities:["Portland"]},
+"Sacramento Kings":{f:1945,cities:["Rochester","Cincinnati","Kansas City","Sacramento"]},
+"San Antonio Spurs":{f:1967,cities:["Dallas","San Antonio"]},
+"Toronto Raptors":{f:1995,cities:["Toronto"]},
+"Utah Jazz":{f:1974,cities:["New Orleans","Salt Lake City"]},
+"Washington Wizards":{f:1961,cities:["Chicago","Baltimore","Washington"]}
+},
+nfl: {
+"Arizona Cardinals":{f:1898,cities:["Chicago","St. Louis","Phoenix (Arizona)"]},
+"Atlanta Falcons":{f:1966,cities:["Atlanta"]},
+"Baltimore Ravens":{f:1996,cities:["Baltimore"]},
+"Buffalo Bills":{f:1960,cities:["Buffalo"]},
+"Carolina Panthers":{f:1995,cities:["Charlotte"]},
+"Chicago Bears":{f:1919,cities:["Decatur","Chicago"]},
+"Cincinnati Bengals":{f:1968,cities:["Cincinnati"]},
+"Cleveland Browns":{f:1946,cities:["Cleveland"]},
+"Dallas Cowboys":{f:1960,cities:["Dallas"]},
+"Denver Broncos":{f:1960,cities:["Denver"]},
+"Detroit Lions":{f:1930,cities:["Portsmouth","Detroit"]},
+"Green Bay Packers":{f:1919,cities:["Green Bay"]},
+"Houston Texans":{f:2002,cities:["Houston"]},
+"Indianapolis Colts":{f:1953,cities:["Baltimore","Indianapolis"]},
+"Jacksonville Jaguars":{f:1995,cities:["Jacksonville"]},
+"Kansas City Chiefs":{f:1960,cities:["Dallas","Kansas City"]},
+"Las Vegas Raiders":{f:1960,cities:["Oakland","Los Angeles","Oakland","Las Vegas"]},
+"Los Angeles Chargers":{f:1960,cities:["Los Angeles","San Diego","Los Angeles"]},
+"Los Angeles Rams":{f:1936,cities:["Cleveland","Los Angeles","St. Louis","Los Angeles"]},
+"Miami Dolphins":{f:1966,cities:["Miami"]},
+"Minnesota Vikings":{f:1961,cities:["Minneapolis"]},
+"New England Patriots":{f:1960,cities:["Boston","Foxborough"]},
+"New Orleans Saints":{f:1967,cities:["New Orleans"]},
+"New York Giants":{f:1925,cities:["New York"]},
+"New York Jets":{f:1960,cities:["New York"]},
+"Philadelphia Eagles":{f:1933,cities:["Philadelphia"]},
+"Pittsburgh Steelers":{f:1933,cities:["Pittsburgh"]},
+"San Francisco 49ers":{f:1946,cities:["San Francisco"]},
+"Seattle Seahawks":{f:1976,cities:["Seattle"]},
+"Tampa Bay Buccaneers":{f:1976,cities:["Tampa"]},
+"Tennessee Titans":{f:1960,cities:["Houston","Nashville (Tennessee)"]},
+"Washington Commanders":{f:1932,cities:["Boston","Washington"]}
+},
+wnba: {
+"Atlanta Dream":{f:2008,cities:["Atlanta"]},
+"Chicago Sky":{f:2006,cities:["Chicago"]},
+"Connecticut Sun":{f:1999,cities:["Orlando","Uncasville (Connecticut)"]},
+"Dallas Wings":{f:1998,cities:["Detroit","Tulsa","Dallas (Arlington)"]},
+"Golden State Valkyries":{f:2025,cities:["San Francisco"]},
+"Indiana Fever":{f:2000,cities:["Indianapolis"]},
+"Las Vegas Aces":{f:1997,cities:["Salt Lake City (Utah)","San Antonio","Las Vegas"]},
+"Los Angeles Sparks":{f:1997,cities:["Los Angeles"]},
+"Minnesota Lynx":{f:1999,cities:["Minneapolis"]},
+"New York Liberty":{f:1997,cities:["New York"]},
+"Phoenix Mercury":{f:1997,cities:["Phoenix"]},
+"Seattle Storm":{f:2000,cities:["Seattle"]},
+"Washington Mystics":{f:1998,cities:["Washington"]}
 }
 };
 
@@ -1490,11 +1586,19 @@ async function openRoster(team){
     <div class="stat-card"><div class="big">${rec('road')}</div><div class="lbl">Away</div></div>
   </div>`;
 
-  /* ---- Name origin ---- */
-  if(facts){
-    html += `<div style="padding:12px 16px 0">
-      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600">Where the name comes from</div>
-      <p style="font-size:14px;margin-top:4px">${facts.o}</p>
+  /* ---- Franchise history: founded, relocations, name origin, logo-as-emblem ---- */
+  const fr = FRANCHISE[state.league]?.[team.displayName];
+  if(facts || fr){
+    const leg = `<span class="leg"><svg viewBox="0 0 46 22" fill="none" stroke="var(--muted)"><line x1="4" y1="11" x2="42" y2="11" stroke-width="1.5" stroke-dasharray="3 3"/></svg><span class="plane">\u2708\ufe0f</span></span>`;
+    const relocHTML = (fr && fr.cities && fr.cities.length>1)
+      ? `<div class="reloc">${fr.cities.map((c,i)=>`<span class="city">${esc(c)}</span>${i<fr.cities.length-1?leg:''}`).join('')}</div>
+         <div style="font-size:12px;color:var(--muted);margin-top:2px">${fr.cities.length-1} relocation${fr.cities.length-1>1?'s':''} in franchise history</div>`
+      : (fr ? `<div style="font-size:13px;color:var(--muted);margin-top:6px">Has called ${esc(fr.cities[0])} home for its entire history \u2014 no relocations.</div>` : '');
+    html += `<div class="panel-section">
+      <div class="lbl-sm">Franchise History</div>
+      ${fr?.f?`<span class="founded-badge">Founded ${fr.f}</span>`:''}
+      ${relocHTML}
+      ${facts?`<p style="font-size:14px;margin-top:10px"><strong>Where the name comes from:</strong> ${facts.o}</p>`:''}
     </div>`;
   }
 

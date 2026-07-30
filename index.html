@@ -297,16 +297,73 @@ const COLLEGE_LEAGUES = ['ncaam','ncaaw','ncaaf'];
 const isCollegeLeague = (lg) => COLLEGE_LEAGUES.includes(lg);
 const isTwoYearSeason = (lg) => (lg==='nba'||lg==='ncaam'||lg==='ncaaw'); // seasons labeled 2025-26
 const isSpringSeason = (lg) => (lg==='mlb'); // MLB single calendar-year season, latest 2025 until 2026 underway
+
+/* ================= ALL-TIME CAREER LEADERS =================
+   Curated, verified career records. Numbers current as of the 2025-26
+   seasons. Active players' totals climb; the "note" flags who's active.
+========================================================== */
+const ALLTIME = {
+nba: [
+  {cat:'Points', rows:[['LeBron James',43440,'active'],['Kareem Abdul-Jabbar',38387],['Karl Malone',36928],['Kobe Bryant',33643],['Michael Jordan',32292]]},
+  {cat:'Assists', rows:[['John Stockton',15806],['Chris Paul',12499,'active'],['Jason Kidd',12091],['LeBron James',11584,'active'],['Steve Nash',10335]]},
+  {cat:'Rebounds', rows:[['Wilt Chamberlain',23924],['Bill Russell',21620],['Kareem Abdul-Jabbar',17440],['Elvin Hayes',16279],['Moses Malone',16212]]},
+  {cat:'Steals', rows:[['John Stockton',3265],['Chris Paul',2717,'active'],['Jason Kidd',2684],['Michael Jordan',2514],['Gary Payton',2445]]},
+  {cat:'Blocks', rows:[['Hakeem Olajuwon',3830],['Dikembe Mutombo',3289],['Kareem Abdul-Jabbar',3189],['Mark Eaton',3064],['Tim Duncan',3020]]},
+  {cat:'3-Pointers Made', rows:[['Stephen Curry',4058,'active'],['Ray Allen',2973],['James Harden',3195,'active'],['Reggie Miller',2560],['Damian Lillard',2804,'active']]}
+],
+wnba: [
+  {cat:'Points', rows:[['Diana Taurasi',10646],['Tina Charles',7996,'active'],['Tina Thompson',7488],['Tamika Catchings',7380],['DeWanna Bonner',7314,'active']]},
+  {cat:'Assists', rows:[['Sue Bird',3234],['Courtney Vandersloot',3229,'active'],['Ticha Penicheiro',2599],['Diana Taurasi',2077],['Lindsay Whalen',2348]]},
+  {cat:'Rebounds', rows:[['Tina Charles',4413,'active'],['Rebekkah Brunson',3356],['Tamika Catchings',3316],['Lisa Leslie',3307],['Sylvia Fowles',4007]]},
+  {cat:'3-Pointers Made', rows:[['Diana Taurasi',1447],['Sue Bird',1000],['Sabrina Ionescu',700,'active'],['Katie Smith',906],['Kristi Toliver',866]]}
+],
+nfl: [
+  {cat:'Passing Yards', rows:[['Tom Brady',89214],['Drew Brees',80358],['Peyton Manning',71940],['Brett Favre',71838],['Aaron Rodgers',62952,'active']]},
+  {cat:'Passing TDs', rows:[['Tom Brady',649],['Drew Brees',571],['Peyton Manning',539],['Brett Favre',508],['Aaron Rodgers',503,'active']]},
+  {cat:'Rushing Yards', rows:[['Emmitt Smith',18355],['Walter Payton',16726],['Frank Gore',16000],['Barry Sanders',15269],['Adrian Peterson',14918]]},
+  {cat:'Receiving Yards', rows:[['Jerry Rice',22895],['Larry Fitzgerald',17492],['Terrell Owens',15934],['Randy Moss',15292],['Isaac Bruce',15208]]},
+  {cat:'Receptions', rows:[['Jerry Rice',1549],['Larry Fitzgerald',1432],['Tony Gonzalez',1325],['Jason Witten',1228],['Marvin Harrison',1102]]},
+  {cat:'Total TDs', rows:[['Jerry Rice',208],['Emmitt Smith',175],['LaDainian Tomlinson',162],['Randy Moss',157],['Terrell Owens',156]]}
+],
+mlb: [
+  {cat:'Hits', rows:[['Pete Rose',4256],['Ty Cobb',4189],['Hank Aaron',3771],['Stan Musial',3630],['Tris Speaker',3514]]},
+  {cat:'Home Runs', rows:[['Barry Bonds',762],['Hank Aaron',755],['Babe Ruth',714],['Albert Pujols',703],['Alex Rodriguez',696]]},
+  {cat:'RBI', rows:[['Hank Aaron',2297],['Albert Pujols',2218],['Babe Ruth',2214],['Alex Rodriguez',2086],['Barry Bonds',1996]]},
+  {cat:'Stolen Bases', rows:[['Rickey Henderson',1406],['Lou Brock',938],['Billy Hamilton',914],['Ty Cobb',897],['Tim Raines',808]]},
+  {cat:'Wins (Pitcher)', rows:[['Cy Young',511],['Walter Johnson',417],['Grover Alexander',373],['Christy Mathewson',373],['Pud Galvin',365]]},
+  {cat:'Strikeouts (Pitcher)', rows:[['Nolan Ryan',5714],['Randy Johnson',4875],['Roger Clemens',4672],['Steve Carlton',4136],['Bert Blyleven',3701]]}
+],
+ncaam: [
+  {cat:'Career Points', rows:[['Pete Maravich',3667],['Freeman Williams',3249],['Lionel Simmons',3217],['Alphonso Ford',3165],['Harry Kelly',3066]]},
+  {cat:'Career Rebounds', rows:[['Tom Gola',2201],['Joe Holup',2030],['Charlie Slack',2117],['Ed Conlin',1884],['Dickie Hemric',1802]]},
+  {cat:'Career Assists', rows:[['Bobby Hurley',1076],['Chris Corchiani',1038],['Ed Cota',1030],['Keith Jennings',983],['Sherman Douglas',960]]}
+],
+ncaaw: [
+  {cat:'Career Points', rows:[['Caitlin Clark',3951],['Kelsey Plum',3527],['Kelsey Mitchell',3402],['Jackie Stiles',3393],['Brittney Griner',3283]]},
+  {cat:'Career Rebounds', rows:[['Wanda Ford',1887],['Courtney Paris',2034],['Chikayla Cook',1653],['Cheryl Miller',1534],['Nyara Sabally',1400]]},
+  {cat:'Career Assists', rows:[['Caitlin Clark',1144],['Courtney Vandersloot',1118],['Suzie McConnell',1090],['Ticha Penicheiro',990],['Andrea Nagy',940]]}
+],
+ncaaf: [
+  {cat:'Career Passing Yards', rows:[['Case Keenum',19217],['Timmy Chang',17072],['Graham Harrell',15793],['Landry Jones',16646],['Bailey Zappe',14607]]},
+  {cat:'Career Rushing Yards', rows:[['Ron Dayne',7125],['Donnel Pumphrey',6405],['DeAngelo Williams',6026],['Ricky Williams',6279],['Tony Dorsett',6082]]},
+  {cat:'Career Receiving Yards', rows:[['Trevor Insley',5005],['Nate Burleson',4899],['Ryan Broyles',4586],['Justin Blackmon',3564],['Michael Crabtree',3127]]}
+]
+};
+
 const VIEWS = [
-  { id:'attendance', label:'Attendance' },
   { id:'standings',  label:'Standings' },
   { id:'leaders',    label:'Stat Leaders' },
+  { id:'alltime',    label:'All-Time' },
   { id:'teams',      label:'Teams & Rosters' },
+  { id:'attendance', label:'Attendance' },
   { id:'scores',     label:'Scoreboard' }
 ];
 const API = (lg) => `https://site.api.espn.com/apis/site/v2/sports/${LEAGUES[lg].sport}/${LEAGUES[lg].slug}`;
 const API_V2 = (lg) => `https://site.api.espn.com/apis/v2/sports/${LEAGUES[lg].sport}/${LEAGUES[lg].slug}`;
 const API_V3 = (lg) => `https://site.api.espn.com/apis/site/v3/sports/${LEAGUES[lg].sport}/${LEAGUES[lg].slug}`;
+// Core API uses a "leagues" path segment and serves season-scoped historical rosters
+const CORE_SLUG = { nba:'nba', wnba:'wnba', nfl:'nfl', mlb:'mlb', ncaam:'mens-college-basketball', ncaaw:'womens-college-basketball', ncaaf:'college-football' };
+const API_CORE = (lg) => `https://sports.core.api.espn.com/v2/sports/${LEAGUES[lg].sport}/leagues/${CORE_SLUG[lg]}`;
 
 /* ================= VERIFIED ATTENDANCE / TICKET DATA =================
    EDIT HERE. Each league block holds hand-verified figures with sources.
@@ -570,13 +627,23 @@ wnba: {
    Counts current through July 2026. conf = conference titles (to be
    verified in a later pass \u2014 shown as "\u2014" until filled).
 ================================================ */
+const TWO_WORD_MASCOTS = new Set(['blue devils','tar heels','golden eagles','fighting irish','crimson tide','red storm','green wave','yellow jackets','ragin cajuns','demon deacons','scarlet knights','golden bears','golden gophers','sun devils','red raiders','horned frogs','mean green','running rebels','rainbow warriors','red wolves','black knights','golden flashes','golden hurricane']);
 function titlesFor(teamName){
   if(isCollegeLeague(state.league)){
     const map = COLLEGE_TITLES[state.league] || {};
-    // try exact, then location-style match
     if(map[teamName]!=null) return map[teamName];
-    const key = Object.keys(map).find(k => teamName.includes(k) || k.includes(teamName));
-    return key!=null ? map[key] : null;
+    const norm = s => s.toLowerCase().replace(/[^a-z0-9& ]/g,'').trim();
+    const normMap = {}; Object.keys(map).forEach(k=>normMap[norm(k)]=map[k]);
+    const tn = norm(teamName);
+    if(normMap[tn]!=null) return normMap[tn];
+    const words = tn.split(' ');
+    if(words.length < 2) return null;
+    // Drop exactly the mascot (2 words for known compound mascots, else 1). This leaves
+    // "Kansas State", "Tennessee State", "North Carolina A&T" intact so they never match
+    // the shorter champion school ("Kansas", "Tennessee", "North Carolina").
+    const drop = TWO_WORD_MASCOTS.has(words.slice(-2).join(' ')) ? 2 : 1;
+    const school = words.slice(0, words.length-drop).join(' ');
+    return normMap[school] ?? null;
   }
   const f = TEAM_FACTS[state.league]?.[teamName];
   return f ? f.t : null;
@@ -1262,6 +1329,52 @@ function wireSeasonSel(){
 }
 const seasonParam = () => state.season ? `?season=${state.season}` : '';
 
+
+/* ---- Historical roster: reconstruct a past season's squad from the core API ----
+   Returns [{name, jersey, pos, height, weight, dob, ageAtSeason, headshot}] .
+   Age is computed as of the season's midpoint (Jan 1 of the ending year). */
+const rosterCache = {};
+async function getSeasonRoster(lg, teamId, season){
+  const ck = lg+'|roster|'+teamId+'|'+season;
+  if(rosterCache[ck]) return rosterCache[ck];
+  try{ const raw = localStorage.getItem('ss:'+ck); if(raw){ const o=JSON.parse(raw);
+    if(Date.now()-o.t < 60*86400e3 && o.v){ rosterCache[ck]=o.v; return o.v; } } }catch(e){}
+  // 1) list of athlete refs for that season
+  const listUrl = `${API_CORE(lg)}/seasons/${season}/teams/${teamId}/athletes?limit=120`;
+  const list = await getJSON(listUrl);
+  const refs = (list.items||[]).map(x=>x.$ref).filter(Boolean);
+  if(!refs.length) throw new Error('no season roster');
+  // 2) resolve each athlete (name, dob, position, physicals)
+  const players = [];
+  await inChunks(refs, 8, async ref => {
+    try{
+      // normalize the ref to https and strip any query for stable caching
+      const u = ref.replace(/^http:/,'https:');
+      const a = await getJSON(u);
+      players.push({
+        name: a.displayName || a.fullName || '',
+        jersey: a.jersey ?? '',
+        pos: a.position?.abbreviation || a.position?.name || '',
+        height: a.displayHeight || '',
+        weight: a.displayWeight || '',
+        dob: a.dateOfBirth || '',
+        headshot: a.headshot?.href || ''
+      });
+    }catch(e){}
+  });
+  // midpoint of the season for age math: two-year sports end in `season`, so Jan 1 of that year;
+  // single-year sports play mid-year, so Jul 1 of that year.
+  const mid = isTwoYearSeason(lg) ? new Date(season, 0, 1) : new Date(season, 6, 1);
+  players.forEach(p=>{
+    if(p.dob){ const d=new Date(p.dob); p.ageAtSeason = isNaN(d)?null:Math.floor((mid-d)/31557600000); }
+    else p.ageAtSeason = null;
+  });
+  players.sort((a,b)=>(parseInt(a.jersey)||999)-(parseInt(b.jersey)||999));
+  rosterCache[ck] = players;
+  try{ localStorage.setItem('ss:'+ck, JSON.stringify({t:Date.now(), v:players})); }catch(e){}
+  return players;
+}
+
 /* ================= RENDER: ATTENDANCE ================= */
 const liveAttCache = {};
 function renderAttendance(){
@@ -1396,6 +1509,37 @@ async function buildAttendanceTable(season){
     prog.style.display='none';
     wrap.innerHTML = `<div class="error">Couldn't build the table \u2014 the data feed may be busy. Switch seasons to retry.</div>`;
   }
+}
+
+
+/* ================= RENDER: ALL-TIME LEADERS ================= */
+function renderAllTime(){
+  const L = LEAGUES[state.league];
+  const data = ALLTIME[state.league];
+  if(!data){
+    setMain(`${header(`${L.label} All-Time Leaders`, 'Career records')}
+      <div class="loading">All-time leaders for this league are coming soon.</div>`);
+    return;
+  }
+  const blocks = data.map(cat=>{
+    const rows = cat.rows.map((r,i)=>`
+      <tr>
+        <td class="rank">${i+1}</td>
+        <td style="font-weight:600">${esc(r[0])}${r[2]==='active'?' <span style="font-size:10px;color:var(--accent);font-weight:700">\u25CF ACTIVE</span>':''}</td>
+        <td class="num" style="font-weight:700">${fmt(r[1])}</td>
+      </tr>`).join('');
+    return `<div>
+      <h2 class="section" style="font-size:19px;margin-top:8px">${esc(cat.cat)}</h2>
+      <div class="table-scroll"><table style="min-width:300px">
+        <thead><tr><th></th><th>Player</th><th class="num">Career</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>
+    </div>`;
+  }).join('');
+  setMain(`
+    ${header(`${L.label} All-Time Career Leaders`, 'The greatest careers in league history \u2014 regular-season totals')}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">${blocks}</div>
+    <p class="footnote" style="margin-top:14px">Career regular-season totals. Players marked <span style="color:var(--accent);font-weight:700">\u25CF ACTIVE</span> are still adding to their numbers. Records are compiled from official league sources and updated periodically.</p>
+  `);
 }
 
 /* ================= RENDER: STANDINGS ================= */
@@ -1762,13 +1906,77 @@ async function openRoster(team){
   </div>`;
 
   html += `<div style="padding:14px 16px 16px">
-    <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:6px">Current Roster</div>
-    ${rosterHTML}
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px">
+      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600">Roster</div>
+      <select id="rosterSeason" style="font-family:'Barlow';font-size:13px;padding:5px 10px;border:2px solid var(--ink);background:var(--card)">
+        <option value="">Current</option>
+      </select>
+    </div>
+    <div id="rosterMountInner">${rosterHTML}</div>
   </div>`;
 
   body.innerHTML = html;
   const rosterEl = document.getElementById('rosterTable');
   if(rosterEl) makeSortable(rosterEl);
+
+  /* ---- Roster season selector: current (from feed) or any past season (rebuilt from core API) ---- */
+  const rSel = document.getElementById('rosterSeason');
+  if(rSel){
+    const twoYr = isTwoYearSeason(state.league);
+    const latestR = (state.league==='nfl'||state.league==='ncaaf'||state.league==='mlb') ? 2025 : 2026;
+    for(let y=latestR; y>=latestR-14; y--){
+      const label = twoYr ? `${y-1}\u2013${String(y).slice(2)}` : String(y);
+      rSel.insertAdjacentHTML('beforeend', `<option value="${y}">${label}</option>`);
+    }
+    const renderRosterTable = (players, seasonLabel) => {
+      // players: normalized {name,jersey,pos,height,weight,dob,ageAtSeason,headshot}
+      const inches = h => { const m=String(h||'').match(/(\d+)'\s*(\d+)?/); return m?(+m[1]*12+(+(m[2]||0))):0; };
+      const lbs = w => { const m=String(w||'').match(/(\d+)/); return m?+m[1]:0; };
+      const dobFmt = d => { if(!d) return ''; const x=new Date(d); return isNaN(x)?'':x.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); };
+      const ages = players.map(p=>p.ageAtSeason).filter(a=>a!=null);
+      let ageCard='';
+      if(ages.length>=3){
+        const avg=(ages.reduce((s,a)=>s+a,0)/ages.length).toFixed(1);
+        const oldP=players.filter(p=>p.ageAtSeason!=null).reduce((m,p)=>p.ageAtSeason>m.ageAtSeason?p:m);
+        const yngP=players.filter(p=>p.ageAtSeason!=null).reduce((m,p)=>p.ageAtSeason<m.ageAtSeason?p:m);
+        ageCard=`<div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:10px">
+          <div class="stat-card"><div class="big">${avg}</div><div class="lbl">Avg Age${seasonLabel?` (${seasonLabel})`:''}</div></div>
+          <div class="stat-card"><div class="big">${oldP.ageAtSeason}</div><div class="lbl">Oldest</div><div class="note">${esc(oldP.name)}</div></div>
+          <div class="stat-card"><div class="big">${yngP.ageAtSeason}</div><div class="lbl">Youngest</div><div class="note">${esc(yngP.name)}</div></div>
+        </div>`;
+      }
+      const rows = players.map(p=>`
+        <tr>
+          <td class="num" data-v="${parseInt(p.jersey)||0}" style="width:44px;color:var(--muted)">${esc(p.jersey ?? '')}</td>
+          <td data-v="${esc((p.name||'').toLowerCase())}"><span class="teamcell">${p.headshot?`<img class="headshot" src="${esc(p.headshot)}" alt="" loading="lazy" onerror="this.style.display='none'">`:''}<span style="font-weight:600">${esc(p.name)}</span></span></td>
+          <td>${esc(p.pos||'')}</td>
+          <td class="num" data-v="${inches(p.height)}">${esc(p.height||'')}</td>
+          <td class="num" data-v="${lbs(p.weight)}">${esc(p.weight||'')}</td>
+          <td class="num" data-v="${p.ageAtSeason??''}">${esc(p.ageAtSeason??'\u2014')}</td>
+          <td class="num" data-v="${p.dob?new Date(p.dob).getTime():''}" style="white-space:nowrap;color:var(--muted)">${dobFmt(p.dob)}</td>
+        </tr>`).join('');
+      const tbl = `${ageCard}<p class="footnote" style="margin:0 0 6px">${seasonLabel?`Roster for the ${seasonLabel} season, with each player\u2019s age that year. `:''}Click any column to sort.</p>
+        <div class="table-scroll"><table id="rosterTable2">
+          <thead><tr><th class="sortable num" data-col="0">#</th><th class="sortable" data-col="1">Player</th><th class="sortable" data-col="2">Pos</th><th class="sortable num" data-col="3">HT</th><th class="sortable num" data-col="4">WT</th><th class="sortable num" data-col="5">Age</th><th class="sortable num" data-col="6">Born</th></tr></thead>
+          <tbody>${rows}</tbody></table></div>`;
+      const mount = document.getElementById('rosterMountInner');
+      mount.innerHTML = tbl;
+      makeSortable(document.getElementById('rosterTable2'));
+    };
+    rSel.addEventListener('change', async ()=>{
+      const season = rSel.value;
+      const mount = document.getElementById('rosterMountInner');
+      if(!season){ location.reload(); return; } // "Current" — simplest is to reopen; rare action
+      mount.innerHTML = `<div class="progress">Rebuilding the ${rSel.options[rSel.selectedIndex].text} roster from that season\u2019s records\u2026</div>`;
+      try{
+        const players = await getSeasonRoster(state.league, team.id, season);
+        if(!players.length){ mount.innerHTML = `<div class="progress">No roster on record for that season.</div>`; return; }
+        renderRosterTable(players, rSel.options[rSel.selectedIndex].text);
+      }catch(err){
+        mount.innerHTML = `<div class="error">Couldn\u2019t rebuild that season\u2019s roster \u2014 it may be out of range for this league.</div>`;
+      }
+    });
+  }
 
   /* Load + render the game log for a chosen season */
   const loadLog = async (season) => {
@@ -1862,7 +2070,7 @@ async function renderScores(refreshing){
 /* ================= ROUTER ================= */
 function render(){
   ({ attendance:renderAttendance, standings:renderStandings, leaders:renderLeaders,
-     teams:renderTeams, scores:renderScores }[state.view] || renderAttendance)();
+     alltime:renderAllTime, teams:renderTeams, scores:renderScores }[state.view] || renderStandings)();
 }
 buildNav();
 render();

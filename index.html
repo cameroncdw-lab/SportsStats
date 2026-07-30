@@ -627,7 +627,7 @@ wnba: {
    Counts current through July 2026. conf = conference titles (to be
    verified in a later pass \u2014 shown as "\u2014" until filled).
 ================================================ */
-const TWO_WORD_MASCOTS = new Set(['blue devils','tar heels','golden eagles','fighting irish','crimson tide','red storm','green wave','yellow jackets','ragin cajuns','demon deacons','scarlet knights','golden bears','golden gophers','sun devils','red raiders','horned frogs','mean green','running rebels','rainbow warriors','red wolves','black knights','golden flashes','golden hurricane']);
+const TWO_WORD_MASCOTS = new Set(['blue devils','tar heels','golden eagles','fighting irish','crimson tide','red storm','green wave','yellow jackets','ragin cajuns','demon deacons','scarlet knights','golden bears','golden gophers','sun devils','red raiders','horned frogs','mean green','running rebels','rainbow warriors','red wolves','black knights','golden flashes','golden hurricane','lady vols','lady volunteers','lady bears','lady raiders','lady techsters','lady tigers','lady bulldogs','lady lions','lady eagles','lady bison']);
 function titlesFor(teamName){
   if(isCollegeLeague(state.league)){
     const map = COLLEGE_TITLES[state.league] || {};
@@ -638,11 +638,13 @@ function titlesFor(teamName){
     if(normMap[tn]!=null) return normMap[tn];
     const words = tn.split(' ');
     if(words.length < 2) return null;
-    // Drop exactly the mascot (2 words for known compound mascots, else 1). This leaves
-    // "Kansas State", "Tennessee State", "North Carolina A&T" intact so they never match
-    // the shorter champion school ("Kansas", "Tennessee", "North Carolina").
+    // Drop the mascot: 2 words for known compound mascots (incl. "Lady ___"), else 1.
     const drop = TWO_WORD_MASCOTS.has(words.slice(-2).join(' ')) ? 2 : 1;
-    const school = words.slice(0, words.length-drop).join(' ');
+    let school = words.slice(0, words.length-drop).join(' ');
+    if(normMap[school]!=null) return normMap[school];
+    // Fallback: some women's names insert "Lady" before the mascot ("Tennessee Lady Volunteers")
+    // or the feed varies. Strip a trailing "lady" too and retry once.
+    if(school.endsWith(' lady')) school = school.slice(0, -5);
     return normMap[school] ?? null;
   }
   const f = TEAM_FACTS[state.league]?.[teamName];

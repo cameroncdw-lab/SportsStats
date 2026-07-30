@@ -250,6 +250,22 @@ footer strong{color:var(--ink)}
   .league-tab small{display:none}
   th,td{padding:8px}
 }
+
+/* NBA photo filmstrip */
+.nba-gallery{position:relative;overflow:hidden;background:#090b0f;border:2px solid var(--ink);border-top:none;padding:10px}
+.nba-gallery[hidden]{display:none}
+.nba-gallery::before{content:'NBA MOMENTS';position:absolute;z-index:3;left:18px;top:18px;padding:7px 10px;background:rgba(0,0,0,.78);color:#fff;font-size:10px;font-weight:800;letter-spacing:.16em;border-left:4px solid var(--accent);backdrop-filter:blur(4px)}
+.nba-gallery-grid{display:grid;grid-template-columns:1.55fr .72fr 1.05fr .78fr;grid-template-rows:145px 145px;gap:8px}
+.nba-shot{position:relative;overflow:hidden;background:#111;border:1px solid rgba(255,255,255,.14)}
+.nba-shot:nth-child(1){grid-row:1/3}
+.nba-shot:nth-child(3){grid-row:1/3}
+.nba-shot:nth-child(7){grid-column:4;grid-row:1/3}
+.nba-shot img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.92) contrast(1.06);transition:transform .45s ease,filter .45s ease}
+.nba-shot:hover img{transform:scale(1.045);filter:saturate(1.08) contrast(1.08)}
+.nba-shot::after{content:'';position:absolute;inset:0;box-shadow:inset 0 0 28px rgba(0,0,0,.22);pointer-events:none}
+@media(max-width:800px){.nba-gallery-grid{grid-template-columns:1.3fr 1fr 1fr;grid-template-rows:125px 125px}.nba-shot:nth-child(7){display:none}.nba-shot:nth-child(3){grid-row:1/3}}
+@media(max-width:540px){.nba-gallery{padding:6px}.nba-gallery-grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:6px}.nba-shot,.nba-shot:nth-child(1),.nba-shot:nth-child(3){flex:0 0 82%;height:210px;scroll-snap-align:start}.nba-shot:nth-child(7){display:block}.nba-gallery::before{left:12px;top:12px}}
+
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -265,6 +281,17 @@ footer strong{color:var(--ink)}
     <div class="hero" id="leagueHero" aria-hidden="true"></div>
     <div class="marquee" id="leagueMarquee" aria-hidden="true"></div>
     <div class="mural" id="leagueMural" aria-hidden="true"></div>
+    <section class="nba-gallery" id="nbaGallery" aria-label="NBA photo gallery" hidden>
+      <div class="nba-gallery-grid">
+        <figure class="nba-shot"><img src="assets/nba/nba-01.png" alt="NBA playoff jump shot in a packed arena" loading="lazy"></figure>
+        <figure class="nba-shot"><img src="assets/nba/nba-02.png" alt="Basketball player soaring toward the rim" loading="lazy"></figure>
+        <figure class="nba-shot"><img src="assets/nba/nba-03.png" alt="Fast-break basketball action at the rim" loading="lazy"></figure>
+        <figure class="nba-shot"><img src="assets/nba/nba-04.png" alt="Classic basketball dunk in a vintage arena" loading="lazy"></figure>
+        <figure class="nba-shot"><img src="assets/nba/nba-05.png" alt="Slam dunk contest moment before a packed crowd" loading="lazy"></figure>
+        <figure class="nba-shot"><img src="assets/nba/nba-06.png" alt="Late-game playoff jump shot over a defender" loading="lazy"></figure>
+        <figure class="nba-shot"><img src="assets/nba/nba-07.png" alt="Championship celebration under falling confetti" loading="lazy"></figure>
+      </div>
+    </section>
     <nav class="view-tabs" id="viewTabs" aria-label="Section"></nav>
   </div>
 </header>
@@ -1125,6 +1152,11 @@ async function renderMural(){
   const strip = cells.map(c=>`<span class="mural-cell" style="background:${esc(c.color)}"><img src="${esc(c.img)}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"><span>${esc(c.label)}</span></span>`).join('');
   mural.innerHTML = `<div class="mural-track">${strip}${strip}</div>`;
 }
+
+function renderNBAGallery(){
+  const gallery = document.getElementById('nbaGallery');
+  gallery.hidden = state.league !== 'nba';
+}
 function syncNav(){
   document.querySelectorAll('.league-tab').forEach(b=>b.classList.toggle('active', b.dataset.league===state.league));
   document.querySelectorAll('.view-tab').forEach(b=>b.classList.toggle('active', b.dataset.view===state.view));
@@ -1132,6 +1164,7 @@ function syncNav(){
   renderHero();
   renderMarquee();
   renderMural();
+  renderNBAGallery();
 }
 
 /* ================= HELPERS ================= */
